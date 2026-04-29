@@ -153,7 +153,7 @@ table.qi td.r{text-align:right}
 .quote-list-item.selected{background:var(--blue-lt)}
 .quote-list-item .qli-num{font-size:13px;font-weight:500;color:var(--text)}
 .quote-list-item .qli-cl{font-size:11px;color:var(--text3);margin-top:2px}
-.quote-list-item .qli-date{font-size:11px;color:var(--text3);white-space:nowrap;flex-shrink:0}
+.quote-list-item .qli-date{font-size:11px;color:var(--text3);white-space:nowrap!important;flex-shrink:0;word-break:keep-all}
 .qli-tag{display:inline-block;font-size:10px;padding:1px 7px;border-radius:10px;margin-left:4px;font-weight:500}
 .qli-tag-draft{background:#f1efe8;color:#444}
 .qli-tag-sent{background:var(--blue-lt);color:var(--blue-dk)}
@@ -373,6 +373,9 @@ table.qi td.r{text-align:right}
   /* ── 全域防溢出 ── */
   img,table{max-width:100%}
   input,select,textarea{max-width:100%;width:100%}
+  /* 報價單列表日期不換行 */
+  .qli-date{white-space:nowrap!important;flex-shrink:0!important;font-size:10px!important}
+  .qli-num{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0}
 }
 </style>
 </head>
@@ -1733,7 +1736,7 @@ function renderQuoteList(search=''){
   if(!savedQuotes.length){el.innerHTML='<div style="padding:16px;font-size:12px;color:var(--text3)">'+(q||quoteFilter!=='all'?'查無符合報價單':'尚無儲存的報價單')+'</div>';return;}
   el.innerHTML=savedQuotes.map(qt=>{
     const clName=getClientName(qt.clientId);const coName=getCompanyName(qt.companyId);
-    const date=qt.date||qt.savedAt?.slice(0,10)||'';const qid=qt.id||qt.num;const isSelected=qid===selectedQuoteId;
+    const rawDate=qt.date||qt.savedAt?.slice(0,10)||'';const date=rawDate.length===10?rawDate.slice(5).replace('-','/'):'';const qid=qt.id||qt.num;const isSelected=qid===selectedQuoteId;
     return`<div class="quote-list-item${isSelected?' selected':''}" data-qid="${qid}" onclick="previewQuote('${qid}')">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:6px">
         <div class="qli-num" style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${qt.num||qt.id}${statusTag(qt.status||'draft')}</div>
