@@ -1,0 +1,1761 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>報價單系統</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,-apple-system,sans-serif;background:#f5f5f5;min-height:100vh}
+:root{--blue:#185FA5;--blue-lt:#E6F1FB;--blue-dk:#0C447C;--red-lt:#FCEBEB;--red:#A32D2D;--green:#3B6D11;--green-lt:#EAF3DE;--border:#e0e0e0;--radius:6px;--radius-lg:10px;--bg:#fff;--bg2:#f7f7f7;--text:#1a1a1a;--text2:#555;--text3:#999}
+.app{max-width:1140px;margin:0 auto;background:var(--bg);border:0.5px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.06)}
+.tabnav{display:flex;border-bottom:1px solid var(--border);background:var(--bg2)}
+.tabnav button{flex:1;padding:12px 0;font-size:14px;border:none;background:transparent;color:var(--text2);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s}
+.tabnav button.active{color:var(--blue);border-bottom-color:var(--blue);background:var(--bg);font-weight:500}
+.tabnav button:hover:not(.active){background:#efefef;color:var(--text)}
+.panel{display:none;padding:16px}.panel.active{display:block}
+
+/* MGMT */
+.mgmt-layout{display:grid;grid-template-columns:250px 1fr;height:600px;border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden}
+.quotes-mgmt-layout{display:grid;grid-template-columns:260px 1fr;min-height:580px;border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden}
+.mgmt-list{background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;min-height:0}
+.mgmt-list-header{padding:10px 12px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border)}
+.mgmt-list-header span{font-size:11px;font-weight:500;color:var(--text2);text-transform:uppercase;letter-spacing:.06em}
+.list-items{flex:1;overflow-y:auto}
+.list-item{padding:10px 12px;cursor:pointer;border-bottom:0.5px solid var(--border);transition:background .1s}
+.list-item:hover{background:#efefef}
+.list-item.selected{background:var(--blue-lt)}
+.list-item .li-name{font-size:13px;font-weight:500;color:var(--text)}
+.list-item .li-sub{font-size:11px;color:var(--text3);margin-top:2px}
+.mgmt-form{padding:18px;overflow-y:auto;height:100%}
+.mgmt-form h3{font-size:14px;font-weight:500;margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.field label{font-size:12px;color:var(--text2);display:block;margin-bottom:4px}
+.field input,.field textarea,.field select{width:100%;font-size:13px;padding:7px 9px;border:1px solid #ccc;border-radius:var(--radius);background:var(--bg);color:var(--text)}
+.field input:focus,.field textarea:focus,.field select:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 2px rgba(24,95,165,.15)}
+.section-sep{font-size:11px;font-weight:500;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;grid-column:1/-1;border-top:1px solid var(--border);padding-top:12px;margin-top:4px}
+.btn{padding:7px 16px;font-size:13px;border:1px solid #ccc;border-radius:var(--radius);background:var(--bg);color:var(--text);cursor:pointer;transition:all .12s}
+.btn:hover{background:#f0f0f0}
+.btn-primary{background:var(--blue);color:#fff;border-color:var(--blue)}
+.btn-primary:hover{background:var(--blue-dk)}
+.btn-danger{color:var(--red);border-color:#f09595}
+.btn-danger:hover{background:var(--red-lt)}
+.btn-success{color:var(--green);border-color:#9FE1CB}
+.btn-success:hover{background:var(--green-lt)}
+.btn-sm{padding:5px 12px;font-size:12px}
+.btn-xs{padding:3px 8px;font-size:11px}
+.btn-row{display:flex;gap:8px;margin-top:16px;justify-content:space-between;align-items:center}
+
+/* MULTI-PERSON TABLE */
+.person-section{grid-column:1/-1}
+.person-table{width:100%;border-collapse:collapse;font-size:12px}
+.person-table th{font-size:11px;color:var(--text3);font-weight:500;padding:5px 6px;border-bottom:1px solid var(--border);text-align:left;background:var(--bg2)}
+.person-table td{padding:4px 6px;border-bottom:0.5px solid var(--border);vertical-align:middle}
+.person-table tr:last-child td{border-bottom:none}
+.person-table input{width:100%;font-size:12px;padding:4px 6px;border:1px solid #ccc;border-radius:4px;background:var(--bg);color:var(--text)}
+.person-table input:focus{outline:none;border-color:var(--blue)}
+.add-person-btn{display:flex;align-items:center;justify-content:center;gap:5px;font-size:12px;color:var(--blue);background:none;border:1px dashed #a0c0e0;border-radius:var(--radius);padding:5px 10px;cursor:pointer;margin-top:8px;width:100%}
+.add-person-btn:hover{background:var(--blue-lt)}
+
+/* CONTACT PILLS */
+.contact-pills{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
+.cpill{display:inline-flex;align-items:center;background:var(--blue-lt);color:var(--blue);font-size:12px;padding:3px 10px;border-radius:12px;cursor:pointer;border:1.5px solid transparent;transition:all .12s}
+.cpill:hover{border-color:#a0c0e0}
+.cpill.active{background:var(--blue);color:#fff;border-color:var(--blue)}
+
+/* QUOTE */
+.quote-layout{display:grid;grid-template-columns:300px 1fr;min-height:620px;border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden}
+.quote-sidebar{background:var(--bg2);border-right:1px solid var(--border);padding:16px;display:flex;flex-direction:column;gap:14px;overflow-y:auto}
+.quote-sidebar h3{font-size:11px;font-weight:500;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px}
+.quote-sidebar .field label{font-size:12px;color:var(--text2);display:block;margin-bottom:4px}
+.quote-sidebar .field input,.quote-sidebar .field textarea,.quote-sidebar .field select{width:100%;font-size:13px;padding:6px 8px;border:1px solid #ccc;border-radius:var(--radius);background:var(--bg);color:var(--text)}
+.quote-sidebar .field input:focus,.quote-sidebar .field textarea:focus,.quote-sidebar .field select:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 2px rgba(24,95,165,.15)}
+.quote-main{background:var(--bg);display:flex;flex-direction:column}
+.save-bar{display:flex;align-items:center;gap:8px;padding:8px 14px;border-bottom:1px solid var(--border);background:#fafafa;font-size:12px;color:var(--text2);flex-wrap:wrap}
+.save-dot{width:8px;height:8px;border-radius:50%;background:#ccc;flex-shrink:0;transition:background .3s}
+.save-dot.saved{background:#639922}
+.save-dot.saving{background:#EF9F27;animation:pulse .7s infinite alternate}
+.save-dot.unsaved{background:#EF9F27}
+@keyframes pulse{from{opacity:1}to{opacity:.3}}
+.toolbar{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:6px}
+.toolbar span{font-size:13px;font-weight:500}
+.items-editor{padding:12px 14px;border-bottom:1px solid var(--border)}
+.items-hdr{display:grid;grid-template-columns:1fr 56px 56px 96px 84px 28px;gap:6px;margin-bottom:6px}
+.items-hdr span{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em}
+.item-wrap{margin-bottom:8px;border-bottom:0.5px solid var(--border);padding-bottom:6px}
+.item-wrap:last-child{border-bottom:none}
+.item-row{display:grid;grid-template-columns:1fr 56px 56px 96px 84px 28px;gap:6px;align-items:center;margin-bottom:4px}
+.item-remark-row{display:flex;align-items:center;gap:6px;padding-left:2px}
+.item-remark-label{font-size:11px;color:var(--text3);flex-shrink:0;min-width:24px}
+.item-remark-input{flex:1;font-size:12px;padding:3px 7px;border:1px dashed #ccc;border-radius:var(--radius);background:var(--bg);color:var(--text2)}
+.item-remark-input:focus{outline:none;border-color:var(--blue);border-style:solid}
+.item-row input{font-size:12px;padding:5px 7px;border:1px solid #ccc;border-radius:var(--radius);background:var(--bg);color:var(--text)}
+.item-row input:focus{outline:none;border-color:var(--blue)}
+.item-subtotal{font-size:12px;text-align:right;color:var(--text2)}
+.del-btn{width:24px;height:24px;border:none;background:transparent;color:#bbb;cursor:pointer;font-size:17px;border-radius:4px;display:flex;align-items:center;justify-content:center}
+.del-btn:hover{background:var(--red-lt);color:var(--red)}
+.preview-area{flex:1;padding:20px;overflow:auto;background:#e8e8e8}
+
+/* QUOTE PAPER */
+.quote-paper{background:white;max-width:680px;margin:0 auto;padding:36px 42px;border-radius:8px;color:#1a1a1a;font-size:13.9px;box-shadow:0 1px 6px rgba(0,0,0,.1)}
+.qp-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:12px;position:relative}
+.qp-logo{height:60px;max-width:220px;border-radius:4px;background:transparent;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.qp-logo-placeholder{height:60px;width:133px;flex-shrink:0;background:transparent}
+.qp-logo img{height:100%;max-width:220px;object-fit:contain;display:block;overflow:hidden}
+.qp-co-name{font-size:18.9px;font-weight:500;color:#2C2C2A}
+.qp-co-sub{font-size:11.6px;color:#444;line-height:1.5;margin-top:3px;word-break:break-word;overflow-wrap:anywhere;white-space:normal;max-width:100%}
+.qp-meta{text-align:right;flex-shrink:0;min-width:140px;align-self:flex-start}
+.qp-title{font-size:18.9px;font-weight:500;color:var(--blue);letter-spacing:.2em;text-align:center;position:absolute;left:0;right:0;pointer-events:none}
+.qp-num{font-size:12.6px;color:#333;margin-top:3px}
+.divider{height:0.5px;background:#bbb;margin:10px 0}
+.qp-info{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:10px}
+.qp-block h4{font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;color:#444;margin-bottom:6px}
+.qp-block p{font-size:11.6px;color:#444;line-height:1.5}
+table.qi{width:100%;border-collapse:collapse;margin-bottom:16px}
+table.qi thead tr{background:#185FA5}
+table.qi th{padding:7px 8px;font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:#fff;font-weight:600;text-align:left}
+table.qi td{padding:7px 8px;border-bottom:1px solid #d0dae8;font-size:12.6px;color:#1a1a1a}
+table.qi td.r{text-align:right}
+.qp-bottom-row{display:flex;justify-content:space-between;align-items:flex-end;margin-top:4px;gap:20px}
+.qp-bank{flex:1;min-width:0}
+.qp-totals{flex-shrink:0}
+.qp-totals table{min-width:200px}
+.qp-totals td{padding:4px 0;font-size:12.6px}
+.qp-totals td:last-child{text-align:right;padding-left:16px}
+.qp-totals .grand td{font-size:14.7px;font-weight:500;color:var(--blue);border-top:2px solid var(--blue);padding-top:9px}
+.qp-notes{margin-top:22px;padding:13px;background:#f7f9fb;border-radius:6px;border-left:3px solid var(--blue)}
+.qp-notes h4{font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;color:#444;margin-bottom:5px}
+.qp-notes p{font-size:12.1px;color:#222;line-height:1.7;white-space:pre-wrap}
+.qp-signer{display:flex;gap:16px;margin-top:32px}
+.qp-sign-box{flex:1;border-top:1px solid #888;padding-top:8px;font-size:11.6px;color:#333;text-align:center;min-height:40px}
+.qp-footer{margin-top:22px;padding-top:12px;border-top:0.5px solid #ccc;display:flex;justify-content:space-between;font-size:11.6px;color:#555}
+
+/* LOGO UPLOAD */
+.logo-upload-zone{grid-column:1/-1;border:2px dashed #c0d4ea;border-radius:var(--radius);padding:14px;text-align:center;cursor:pointer;transition:all .15s;background:var(--bg)}
+.logo-upload-zone:hover{border-color:var(--blue);background:var(--blue-lt)}
+.logo-upload-zone input[type=file]{display:none}
+.logo-preview-wrap{display:flex;align-items:center;gap:12px;grid-column:1/-1;margin-top:4px}
+.logo-preview-img{height:55px;max-width:189px;object-fit:contain;border:1px solid var(--border);border-radius:4px;background:#fafafa;padding:4px}
+
+/* AUTOCOMPLETE */
+.ac-wrap{position:relative}
+.ac-dropdown{position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid #ccc;border-radius:var(--radius);box-shadow:0 4px 14px rgba(0,0,0,.13);z-index:200;max-height:220px;overflow-y:auto;display:none}
+.ac-dropdown.open{display:block}
+.ac-item{padding:8px 10px;cursor:pointer;border-bottom:0.5px solid #f0f0f0}
+.ac-item:last-child{border-bottom:none}
+.ac-item:hover{background:var(--blue-lt)}
+.ac-item .ac-name{font-size:13px;font-weight:500;color:var(--text)}
+.ac-item .ac-sub{font-size:11px;color:var(--text3)}
+
+/* QUOTES MANAGEMENT */
+.quote-list-item{padding:10px 12px;cursor:pointer;border-bottom:0.5px solid var(--border);transition:background .1s;position:relative}
+.quote-list-item:hover{background:#efefef}
+.quote-list-item.selected{background:var(--blue-lt)}
+.quote-list-item .qli-num{font-size:13px;font-weight:500;color:var(--text)}
+.quote-list-item .qli-cl{font-size:11px;color:var(--text3);margin-top:2px}
+.quote-list-item .qli-date{font-size:11px;color:var(--text3)}
+.qli-tag{display:inline-block;font-size:10px;padding:1px 7px;border-radius:10px;margin-left:4px;font-weight:500}
+.qli-tag-draft{background:#f1efe8;color:#444}
+.qli-tag-sent{background:var(--blue-lt);color:var(--blue-dk)}
+.qli-tag-accepted{background:var(--green-lt);color:var(--green)}
+.qli-tag-cancelled{background:var(--red-lt);color:var(--red)}
+
+/* TOAST */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#222;color:#fff;font-size:12px;padding:9px 20px;border-radius:20px;z-index:9999;opacity:0;transition:opacity .25s;pointer-events:none;white-space:nowrap}
+.toast.show{opacity:1}
+
+/* STATUS BADGE in quote editor */
+.status-select-wrap{display:flex;align-items:center;gap:8px}
+.status-select-wrap label{font-size:12px;color:var(--text2);white-space:nowrap}
+.status-select-wrap select{font-size:12px;padding:4px 8px;border:1px solid #ccc;border-radius:var(--radius);background:var(--bg);color:var(--text)}
+
+@media print{
+  @page{size:A4 portrait;margin:12mm 15mm}
+  *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+  /* 列印時隱藏所有元素，只顯示 body.printing 下的 .quote-paper */
+  body:not(.printing)>*{display:none!important}
+  body.printing>*:not(.print-paper-wrap){display:none!important}
+  .print-paper-wrap{
+    display:block!important;
+    background:white!important;
+  }
+  .print-paper-wrap .quote-paper{
+    box-shadow:none!important;
+    border-radius:0!important;
+    margin:0!important;
+    /* 保留所有其他樣式：font-size、padding、max-width、colors */
+  }
+}
+
+/* iPad */
+@media(min-width:769px) and (max-width:1024px){
+  .quote-layout{grid-template-columns:220px 1fr}
+  .quote-sidebar{padding:12px;gap:10px}
+  .items-hdr{grid-template-columns:1fr 46px 46px 76px 64px 24px}
+  .item-row{grid-template-columns:1fr 46px 46px 76px 64px 24px}
+  .preview-area{padding:12px}
+  .quote-paper{padding:24px 28px}
+  .mgmt-layout{grid-template-columns:200px 1fr}
+  .form-grid{gap:10px}
+}
+
+/* Mobile */
+@media(max-width:768px){
+  .app{border-radius:0;border:none;width:100%;overflow-x:hidden}
+  .tabnav button{font-size:11px;padding:10px 2px}
+  /* ── 報價單編輯頁 ── */
+  .quote-layout{grid-template-columns:1fr!important;min-height:auto;width:100%}
+  .quote-sidebar{border-right:none;border-bottom:1px solid var(--border);max-height:none;padding:10px;width:100%;overflow-x:hidden}
+  .save-bar{flex-wrap:wrap;gap:5px;padding:6px 8px}
+  .save-bar .btn,.save-bar label.btn{font-size:11px;padding:4px 8px}
+  .toolbar{padding:8px 10px;gap:5px}
+  .toolbar .btn{font-size:11px;padding:4px 8px}
+  /* 品項編輯器 */
+  .items-editor{padding:6px 8px;overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .items-hdr{grid-template-columns:1fr 34px 34px 58px 50px 20px;font-size:9px;min-width:0}
+  .item-row{grid-template-columns:1fr 34px 34px 58px 50px 20px;min-width:0}
+  .item-row input{font-size:11px;padding:3px 3px}
+  /* 預覽區：全寬、可橫向捲動 */
+  .preview-area{padding:8px;background:#eee;overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%}
+  .quote-paper{padding:12px 14px;font-size:11px;width:100%;max-width:100%;box-sizing:border-box;min-width:0}
+  /* quote paper 內部防溢出 */
+  .qp-header{flex-wrap:wrap;gap:6px}
+  .qp-title{position:static;text-align:center;width:100%;order:-1;margin-bottom:4px}
+  .qp-logo,.qp-logo-placeholder{height:40px}
+  .qp-meta{min-width:0;flex:1}
+  .qp-info{grid-template-columns:1fr}
+  .qp-bottom-row{flex-direction:column;gap:10px}
+  .qp-totals table{min-width:0;width:100%}
+  table.qi{font-size:10px}
+  table.qi th,table.qi td{padding:4px 3px}
+  /* ── 報價單管理頁 ── */
+  #tab-quotes>div{grid-template-columns:1fr!important;min-height:auto}
+  #tab-quotes>div>div:first-child{border-right:none;border-bottom:1px solid var(--border)}
+  #quotes-list{max-height:220px;overflow-y:auto}
+  #quotes-preview{min-height:400px;padding:10px}
+  #quotes-preview .quote-paper{padding:12px 14px;font-size:11px;width:100%;max-width:100%;min-width:0}
+  /* ── 客戶／公司管理 ── */
+  .mgmt-layout{grid-template-columns:1fr!important;min-height:auto;height:auto}
+  .mgmt-list{border-right:none;border-bottom:1px solid var(--border);max-height:260px;min-height:180px}
+  .mgmt-form{height:auto;max-height:none}
+  .form-grid{grid-template-columns:1fr}
+  /* ── 全域防溢出 ── */
+  img,table{max-width:100%}
+  input,select,textarea{max-width:100%;width:100%}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="tabnav">
+    <button onclick="switchTab('quote')">📄 報價單</button>
+    <button onclick="switchTab('quotes')">📋 報價單管理</button>
+    <button onclick="switchTab('clients')">👥 客戶管理</button>
+    <button onclick="switchTab('companies')">🏢 公司管理</button>
+  </div>
+
+  <!-- ===== QUOTE ===== -->
+  <div id="tab-quote" class="panel">
+    <div class="save-bar" id="quote-save-bar" style="display:none">
+      <div class="save-dot" id="q-save-dot"></div>
+      <span id="q-save-label">載入中…</span>
+      <div class="status-select-wrap" style="margin-left:8px">
+        <label>狀態：</label>
+        <select id="q-status" onchange="markUnsaved()">
+          <option value="draft">草稿</option>
+          <option value="sent">已發送</option>
+          <option value="accepted">已接受</option>
+          <option value="cancelled">已取消</option>
+        </select>
+      </div>
+      <div style="flex:1"></div>
+      <button class="btn btn-sm" onclick="saveQuote(true)">💾 儲存報價單</button>
+      <button class="btn btn-sm" onclick="exportData()">📤 匯出備份</button>
+      <label class="btn btn-sm" style="cursor:pointer;margin:0">📥 匯入備份<input type="file" accept=".json" style="display:none" onchange="importData(this)"></label>
+      <button class="btn btn-sm btn-danger" onclick="clearLocalCache()">🗑 清除快取</button>
+    </div>
+    <div id="quote-empty-state" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:340px;gap:16px">
+      <div style="font-size:40px">📄</div>
+      <div style="font-size:15px;font-weight:500;color:var(--text)">尚未開啟報價單</div>
+      <div style="font-size:13px;color:var(--text3);text-align:center">請建立新報價單，或從「報價單管理」開啟已存在的報價單</div>
+      <div style="display:flex;gap:10px;margin-top:4px;flex-wrap:wrap;justify-content:center">
+        <button class="btn btn-primary" onclick="newQuote()" style="font-size:14px;padding:10px 24px">＋ 新增報價單</button>
+        <button class="btn" onclick="switchTab('quotes')" style="font-size:14px;padding:10px 24px">📋 開啟已存在</button>
+      </div>
+      <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;justify-content:center">
+        <button class="btn btn-sm" onclick="exportData()">📤 匯出備份</button>
+        <label class="btn btn-sm" style="cursor:pointer;margin:0">📥 匯入備份<input type="file" accept=".json" style="display:none" onchange="importData(this)"></label>
+        <button class="btn btn-sm btn-danger" onclick="clearLocalCache()">🗑 清除快取</button>
+      </div>
+    </div>
+    <div class="quote-layout" id="quote-editor" style="display:none">
+      <div class="quote-sidebar">
+
+        <div>
+          <h3>出單公司</h3>
+          <div class="field">
+            <select id="q-co-sel" onchange="selectCompany(this.value)">
+              <option value="">— 請選擇 —</option>
+            </select>
+          </div>
+          <div id="q-sales-wrap" style="display:none;margin-top:10px">
+            <div style="font-size:12px;color:var(--text2);margin-bottom:6px">業務人員（點選指定）</div>
+            <div class="contact-pills" id="q-sales-pills"></div>
+          </div>
+        </div>
+
+        <div>
+          <h3>客戶資料 <span style="font-size:10px;color:var(--text3);text-transform:none;letter-spacing:0">（輸入名稱或統編）</span></h3>
+          <div class="field ac-wrap">
+            <input id="q-cl-search" placeholder="搜尋客戶…" autocomplete="off"
+              oninput="acSearch(this.value)" onfocus="acSearch(this.value)" onblur="setTimeout(()=>closeAC(),200)">
+            <div class="ac-dropdown" id="ac-dd"></div>
+          </div>
+          <div id="q-cl-info" style="display:none;background:var(--blue-lt);border-radius:var(--radius);padding:10px;margin-top:8px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
+              <span style="font-size:13px;font-weight:500;color:var(--blue)" id="q-cl-name-badge"></span>
+              <button class="btn btn-xs" onclick="clearClient()">✕ 清除</button>
+            </div>
+            <div id="q-cl-base" style="font-size:12px;color:#444;line-height:1.8;margin-bottom:8px"></div>
+            <div style="font-size:12px;color:var(--text2);margin-bottom:5px">承辦人（點選指定）</div>
+            <div class="contact-pills" id="q-contact-pills"></div>
+          </div>
+        </div>
+
+        <div>
+          <h3>報價資訊</h3>
+          <div class="field"><label>報價單號</label>
+            <div style="display:flex;gap:6px;align-items:center">
+              <input id="q-num" value="" oninput="markUnsaved();renderPreview()" style="flex:1">
+              <button class="btn btn-sm" onclick="genQuoteNum()" title="依公司代碼自動產生報價單號" style="flex-shrink:0;white-space:nowrap">自動產生</button>
+            </div>
+            <div style="font-size:11px;color:var(--text3);margin-top:3px">選擇公司後自動產生，可手動修改</div>
+          </div>
+          <div class="field"><label>報價日期</label><input id="q-date" type="date" oninput="markUnsaved();renderPreview()"></div>
+          <div class="field"><label>有效期限（天）</label><input id="q-validity" type="number" value="7" min="1" oninput="markUnsaved();renderPreview()"></div>
+          <div class="field" id="q-tax-field"><label>稅率（%）</label><input id="q-tax" type="number" value="5" min="0" max="100" oninput="markUnsaved();renderPreview()"></div>
+          <div id="q-tax-note" style="display:none;font-size:11px;color:var(--text3);padding:4px 0">此公司設定為不開發票</div>
+          <div class="field"><label>折扣（%）</label><input id="q-disc" type="number" value="0" min="0" max="100" oninput="markUnsaved();renderPreview()"></div>
+          <div class="field"><label>備註</label><textarea id="q-notes" rows="3" oninput="markUnsaved();renderPreview()">感謝您的詢價，如有疑問請隨時與我們聯繫。</textarea></div>
+        </div>
+      </div>
+
+      <div class="quote-main">
+        <div class="toolbar">
+          <span>報價單預覽</span>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-sm" onclick="addItem()">＋ 新增項目</button>
+            <button class="btn btn-sm" onclick="sendByEmail()" title="用預設郵件程式寄送給承辦人">📧 寄出報價單</button>
+            <button class="btn btn-primary btn-sm" onclick="printQuote()">🖨️ 列印 / PDF</button>
+          </div>
+        </div>
+        <div class="items-editor">
+          <div class="items-hdr"><span>品項說明</span><span>數量</span><span>單位</span><span>單價（元）</span><span>小計</span><span></span></div>
+          <div id="item-rows"></div>
+        </div>
+        <div class="preview-area">
+          <div class="quote-paper">
+            <div class="qp-header">
+              <div id="p-logo"></div>
+              <div class="qp-title" id="p-title">報 價 單</div>
+              <div class="qp-meta">
+                <div class="qp-num" id="p-q-num"></div>
+                <div class="qp-num" id="p-q-date"></div>
+                <div class="qp-num" id="p-validity"></div>
+              </div>
+            </div>
+            <div class="divider"></div>
+            <div class="qp-info">
+              <div class="qp-block">
+                <h4>報價對象</h4>
+                <p id="p-cl-block" style="color:#ccc">（尚未選擇客戶）</p>
+              </div>
+              <div class="qp-block" style="text-align:right">
+                <h4>出單公司</h4>
+                <div id="p-co-name" class="qp-co-name" style="font-size:14px;margin-bottom:4px">（請選擇出單公司）</div>
+                <div id="p-co-sub" class="qp-co-sub" style="text-align:right"></div>
+              </div>
+            </div>
+            <div class="divider" style="margin:8px 0"></div>
+            <table class="qi">
+              <thead><tr id="p-thead-tr">
+                <th style="width:30px">#</th><th>品項說明</th>
+                <th style="width:48px;text-align:right">數量</th>
+                <th style="width:48px;text-align:right">單位</th>
+                <th style="width:90px;text-align:right">單價</th>
+                <th style="width:90px;text-align:right">小計</th>
+              </tr></thead>
+              <tbody id="p-items-body"></tbody>
+            </table>
+            <div class="qp-bottom-row">
+              <div class="qp-block qp-bank">
+                <h4>匯款資訊</h4>
+                <p id="p-bank-block" style="color:#ccc">（請選擇出單公司）</p>
+              </div>
+              <div class="qp-totals"><table><tbody id="p-totals"></tbody></table></div>
+            </div>
+            <div class="qp-notes" id="p-notes-wrap"><h4>備註</h4><p id="p-notes"></p></div>
+            <div class="qp-signer" id="p-signers"></div>
+            <div class="qp-footer">
+              <span>此報價單由系統自動產生</span><span id="p-footer-num"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== QUOTES MANAGEMENT ===== -->
+  <div id="tab-quotes" class="panel">
+    <div class="quotes-mgmt-layout">
+      <!-- 左側列表 -->
+      <div style="background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column">
+        <div class="mgmt-list-header">
+          <span>報價單列表</span>
+          <button class="btn btn-sm btn-primary" onclick="newQuote()">＋ 新增</button>
+        </div>
+        <div style="padding:8px 10px;border-bottom:0.5px solid var(--border)">
+          <input id="q-search" placeholder="搜尋單號或客戶…" style="width:100%;font-size:12px;padding:5px 8px;border:1px solid #ccc;border-radius:var(--radius);background:var(--bg)" oninput="renderQuoteList(this.value)">
+        </div>
+        <div style="padding:6px 10px;border-bottom:0.5px solid var(--border);display:flex;gap:4px;flex-wrap:wrap">
+          <button class="btn btn-xs" id="qf-all" onclick="filterQuotes('all')" style="background:var(--blue);color:#fff;border-color:var(--blue)">全部</button>
+          <button class="btn btn-xs" id="qf-draft" onclick="filterQuotes('draft')">草稿</button>
+          <button class="btn btn-xs" id="qf-sent" onclick="filterQuotes('sent')">已發送</button>
+          <button class="btn btn-xs" id="qf-accepted" onclick="filterQuotes('accepted')">已接受</button>
+        </div>
+        <div class="list-items" id="quotes-list" style="flex:1;overflow-y:auto"></div>
+      </div>
+      <!-- 右側預覽 -->
+      <div style="display:flex;flex-direction:column;background:var(--bg)">
+        <div id="quotes-toolbar" style="display:none;padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:#fafafa">
+          <span id="qt-num-label" style="font-size:13px;font-weight:500;color:var(--text)"></span>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-sm btn-primary" onclick="editSelectedQuote()">✏️ 開啟修改</button>
+            <button class="btn btn-sm" onclick="copySelectedQuote()">📋 複製</button>
+            <button class="btn btn-sm btn-danger" onclick="deleteSelectedQuote()">🗑 刪除</button>
+          </div>
+        </div>
+        <div id="quotes-preview" style="flex:1;overflow-y:auto;padding:20px;background:#e8e8e8">
+          <div id="q2-empty" style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text3);font-size:13px">請從左側選擇報價單</div>
+          <div class="quote-paper" id="q2-paper" style="display:none">
+            <div class="qp-header">
+              <div id="q2-logo"></div>
+              <div class="qp-title" id="q2-title">報 價 單</div>
+              <div class="qp-meta">
+                <div class="qp-num" id="q2-q-num"></div>
+                <div class="qp-num" id="q2-q-date"></div>
+                <div class="qp-num" id="q2-validity"></div>
+              </div>
+            </div>
+            <div class="divider"></div>
+            <div class="qp-info">
+              <div class="qp-block">
+                <h4>報價對象</h4>
+                <p id="q2-cl-block" style="color:#ccc">（尚未選擇客戶）</p>
+              </div>
+              <div class="qp-block" style="text-align:right">
+                <h4>出單公司</h4>
+                <div id="q2-co-name" class="qp-co-name" style="font-size:14px;margin-bottom:4px"></div>
+                <div id="q2-co-sub" class="qp-co-sub" style="text-align:right"></div>
+              </div>
+            </div>
+            <div class="divider" style="margin:8px 0"></div>
+            <table class="qi">
+              <thead><tr id="q2-thead-tr">
+                <th style="width:30px">#</th><th>品項說明</th>
+                <th style="width:48px;text-align:right">數量</th>
+                <th style="width:48px;text-align:right">單位</th>
+                <th style="width:90px;text-align:right">單價</th>
+                <th style="width:90px;text-align:right">小計</th>
+              </tr></thead>
+              <tbody id="q2-items-body"></tbody>
+            </table>
+            <div class="qp-bottom-row">
+              <div class="qp-block qp-bank">
+                <h4>匯款資訊</h4>
+                <p id="q2-bank-block" style="color:#ccc">（請選擇出單公司）</p>
+              </div>
+              <div class="qp-totals"><table><tbody id="q2-totals"></tbody></table></div>
+            </div>
+            <div class="qp-notes" id="q2-notes-wrap"><h4>備註</h4><p id="q2-notes"></p></div>
+            <div class="qp-signer" id="q2-signers"></div>
+            <div class="qp-footer">
+              <span>此報價單由系統自動產生</span><span id="q2-footer-num"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== CLIENTS ===== -->
+  <div id="tab-clients" class="panel">
+    <div class="mgmt-layout">
+      <div class="mgmt-list">
+        <div class="mgmt-list-header"><span>客戶列表</span><button class="btn btn-sm btn-primary" onclick="newClient()">＋ 新增</button></div>
+        <div style="padding:8px 10px;border-bottom:0.5px solid var(--border)">
+          <input id="cl-search" placeholder="搜尋名稱或統編…" style="width:100%;font-size:12px;padding:5px 8px;border:1px solid #ccc;border-radius:var(--radius);background:var(--bg)" oninput="renderClientList(this.value)">
+        </div>
+        <div class="list-items" id="cl-list" style="flex:1;overflow-y:auto"></div>
+      </div>
+      <div class="mgmt-form" id="cl-form-area">
+        <div style="display:flex;align-items:center;justify-content:center;height:300px;color:var(--text3);font-size:13px">請從左側選擇客戶或新增</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== COMPANIES ===== -->
+  <div id="tab-companies" class="panel">
+    <div class="mgmt-layout">
+      <div class="mgmt-list">
+        <div class="mgmt-list-header"><span>公司列表</span><button class="btn btn-sm btn-primary" onclick="newCo()">＋ 新增</button></div>
+        <div class="list-items" id="co-list"></div>
+      </div>
+      <div class="mgmt-form" id="co-form-area">
+        <div style="display:flex;align-items:center;justify-content:center;height:300px;color:var(--text3);font-size:13px">請從左側選擇公司</div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+// ===== STATE =====
+let companies        = [];
+let clients          = [];
+let items            = [{desc:'網站設計與開發',qty:1,unit:'式',price:80000},{desc:'品牌識別設計',qty:1,unit:'式',price:35000}];
+let selectedCompany  = null;
+let selectedSalesIdx = null;
+let selectedClient   = null;
+let selectedContactIdx = null;
+let editingClientId  = null;
+let editingCoId      = null;
+let saveTimer        = null;
+let quoteFilter      = 'all';
+
+// ===== API 設定 =====
+// ⚠️ 請在此填入您的 Google Apps Script 網址
+const API_URL = 'https://script.google.com/macros/s/AKfycbxyStVYJytr_m82aMiNIuB5wx8ftU3lwnViGu-itwe58DXW1dabvF3QDvyGQmjfJ2mx/exec';
+
+// 本機快取
+const SK={companies:'qs_companies',clients:'qs_clients',quote:'qs_quote',quotes:'qs_quotes'};
+function lsGet(k){try{const v=localStorage.getItem(k);return v?JSON.parse(v):null;}catch(e){return null;}}
+function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true;}catch(e){return false;}}
+
+// API 呼叫（JSONP 優先）
+function apiJsonp(params){
+  return new Promise((resolve,reject)=>{
+    const cbName='_cb'+Date.now();
+    const s=document.createElement('script');
+    const p=new URLSearchParams({...params,callback:cbName});
+    s.src=API_URL+'?'+p.toString();
+    const timer=setTimeout(()=>{delete window[cbName];if(s.parentNode)document.head.removeChild(s);reject(new Error('timeout'));},15000);
+    s.onerror=()=>{clearTimeout(timer);delete window[cbName];if(s.parentNode)document.head.removeChild(s);reject(new Error('script error'));};
+    window[cbName]=function(data){clearTimeout(timer);delete window[cbName];if(s.parentNode)document.head.removeChild(s);resolve(data);};
+    document.head.appendChild(s);
+  });
+}
+function apiGet(params){
+  const url=API_URL+'?'+new URLSearchParams(params).toString();
+  return fetch(url,{method:'GET'}).then(r=>r.json()).catch(()=>apiJsonp(params));
+}
+function apiPost(body){
+  return fetch(API_URL,{method:'POST',body:JSON.stringify(body),headers:{'Content-Type':'text/plain'}})
+    .then(r=>r.json()).catch(()=>apiJsonp(body));
+}
+
+// ===== TOAST =====
+function showToast(msg,dur=2400){
+  const t=ge('toast');t.textContent=msg;t.classList.add('show');
+  clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),dur);
+}
+
+// ===== SAVE STATUS =====
+function setSaveDot(s,l){ge('q-save-dot').className='save-dot '+s;ge('q-save-label').textContent=l;}
+function markUnsaved(){
+  setSaveDot('unsaved','尚未儲存');
+  clearTimeout(saveTimer);saveTimer=setTimeout(()=>saveQuote(false),2500);
+}
+
+// ===== 立即 restore UI（在 API 前執行，避免閃爍）=====
+function restoreUIState(){
+  try{
+    const lastTab   = localStorage.getItem('qs_last_tab')||'quote';
+    const lastCoId  = localStorage.getItem('qs_last_co_id');
+    const lastClId  = localStorage.getItem('qs_last_cl_id');
+    const lastQid   = localStorage.getItem('qs_last_qid');
+
+    // 切換到上次的 tab
+    document.querySelectorAll('.tabnav button').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+    const tabIdx={'quote':0,'quotes':1,'clients':2,'companies':3}[lastTab]??0;
+    document.querySelectorAll('.tabnav button')[tabIdx].classList.add('active');
+    const tabEl=ge('tab-'+lastTab);if(tabEl)tabEl.classList.add('active');
+
+    // quote 頁：show/hide editor 由快取決定（initApp 會再處理）
+    if(lastTab==='quote'){
+      const q=lsGet('qs_quote');
+      if(q&&q.num){ showQuoteEditor(); }
+      else{ hideQuoteEditor(); }
+    } else {
+      // 非 quote tab：確保 quote 工具列隱藏
+      if(ge('quote-save-bar'))ge('quote-save-bar').style.display='none';
+    }
+
+    // quotes tab：用本機快取立即渲染列表+預覽，不等 API
+    if(lastTab==='quotes'){
+      // 先用本機快取渲染列表（API 回來後 initApp 會再更新）
+      setTimeout(()=>{
+        renderQuoteList();
+        if(lastQid){
+          previewQuote(lastQid);
+          window._pendingQid=lastQid; // 保留，API 後再刷新一次
+        }
+      },0);
+    }
+
+    // companies tab：記住選取的公司 id
+    if(lastTab==='companies'&&lastCoId){
+      window._pendingCoId=lastCoId;
+    }
+
+    // clients tab：記住選取的客戶 id
+    if(lastTab==='clients'&&lastClId){
+      window._pendingClId=lastClId;
+    }
+  }catch(e){}
+}
+
+// ===== INIT =====
+async function initApp(){
+  // ★ 立即 restore（API 之前），使用者看不到閃爍
+  restoreUIState();
+  setSaveDot('saving','連線中…');
+  const cachedCos=lsGet(SK.companies)||[];
+  const cachedCls=lsGet(SK.clients)||[];
+
+  function dedupeById(arr){
+    const map=new Map();arr.forEach(item=>map.set(String(item.id),item));return Array.from(map.values());
+  }
+
+  try{
+    const result=await apiGet({action:'getAll'});
+    if(result.status==='ok'){
+      if(result.companies?.length){
+        const mapped=result.companies.map(co=>{
+          const sid=String(co.id);
+          const cached=cachedCos.find(cc=>String(cc.id)===sid);
+          return{...co,id:sid,logo:co.logo||cached?.logo||'',code:co.code||cached?.code||'',
+            zip:co.zip||cached?.zip||'',addr:co.addr||cached?.addr||'',tel:co.tel||cached?.tel||'',
+            email:co.email||cached?.email||'',bankName:co.bankName||cached?.bankName||'',
+            bankAcct:co.bankAcct||cached?.bankAcct||'',brandColor:co.brandColor||cached?.brandColor||'#185FA5',
+            contacts:(co.contacts||[]).map(p=>({...p,id:String(p.id||'')}))};
+        });
+        companies=dedupeById(mapped);
+      }else if(cachedCos.length){companies=dedupeById(cachedCos);}
+      if(result.clients?.length){
+        const mapped=result.clients.map(cl=>({...cl,id:String(cl.id),name:cl.name||'',tax:cl.tax||'',tel:cl.tel||'',taxType:cl.taxType||'extra',zip:cl.zip||'',addr:cl.addr||'',
+          fax:cl.fax||'',offices:(cl.offices||[]),contacts:(cl.contacts||[]).map(p=>({...p,id:String(p.id||''),name:p.name||'',dept:p.dept||'',title:p.title||'',ext:p.ext||'',email:p.email||'',mobile:p.mobile||'',note:p.note||'',officeIdx:p.officeIdx??null}))}));
+        clients=dedupeById(mapped);
+      }else if(cachedCls.length){clients=dedupeById(cachedCls);}
+      lsSet(SK.companies,companies);lsSet(SK.clients,clients);
+    }else{throw new Error(result.message||'API 錯誤');}
+  }catch(e){
+    if(cachedCos.length||cachedCls.length){showToast('⚠️ 無法連線雲端，使用本機快取',4000);if(cachedCos.length)companies=dedupeById(cachedCos);if(cachedCls.length)clients=dedupeById(cachedCls);}
+    else{showToast('⚠️ 無法連線雲端，請確認網路連線',5000);}
+  }
+
+  let q=lsGet(SK.quote);
+  if(q){
+    // 從 savedQuotes 找同號的版本，取較新的那份（確保 status/salesIdx 等欄位完整）
+    const savedQuotes=lsGet(SK.quotes)||[];
+    const qInList=savedQuotes.find(sq=>(sq.num||sq.id)===(q.num||q.id));
+    if(qInList){
+      // 合併：以 q（qs_quote）為主，補 qInList 缺漏的欄位
+      q={...qInList,...q};
+      // 關鍵欄位絕對保留 q 的值（q 是最後一次手動儲存的精確版）
+      if(q.status)q.status=q.status;
+      if(q.salesIdx!=null&&q.salesIdx!=='')q.salesIdx=q.salesIdx;
+      if(q.contactIdx!=null&&q.contactIdx!=='')q.contactIdx=q.contactIdx;
+    }
+    if(q.items)items=q.items;
+    if(q.num)ge('q-num').value=q.num;
+    if(q.date)ge('q-date').value=q.date;
+    if(q.validity)ge('q-validity').value=q.validity;
+    if(q.tax!=null)ge('q-tax').value=q.tax;
+    if(q.disc!=null)ge('q-disc').value=q.disc;
+    if(q.notes)ge('q-notes').value=q.notes;
+    if(q.status)ge('q-status').value=q.status;
+    if(q.companyId){const co=companies.find(c=>String(c.id)===String(q.companyId));if(co){selectedCompany=co;selectedSalesIdx=(q.salesIdx!=null&&q.salesIdx!=='')?Number(q.salesIdx):null;}}
+    if(q.clientId){const cl=clients.find(c=>String(c.id)===String(q.clientId));if(cl){selectedClient=cl;selectedContactIdx=(q.contactIdx!=null&&q.contactIdx!=='')?Number(q.contactIdx):null;}}
+  }else{ge('q-date').value=new Date().toISOString().split('T')[0];}
+
+  renderCoSelect();
+  if(selectedCompany){ge('q-co-sel').value=selectedCompany.id;renderSalesPills();}
+  if(selectedClient)renderClientCard();
+  if(q && q.num){
+    // 有快取報價單：直接顯示編輯器
+    showQuoteEditor();
+    renderItems();renderPreview();
+    setSaveDot('saved','已同步');
+  } else {
+    // 無快取：顯示空白引導頁
+    hideQuoteEditor();
+    setSaveDot('saved','');
+  }
+
+  try{
+    const qResult=await apiGet({action:'getQuotes'});
+    if(qResult.status==='ok'&&qResult.quotes?.length){
+      const localQ=lsGet(SK.quotes)||[];
+      // 本機資料建 Map（num 為主鍵）
+      const localMap=new Map();
+      localQ.forEach(lq=>{const key=lq.num||lq.id;if(key)localMap.set(key,lq);});
+
+      // 雲端資料：只有本機完全沒有的才加入，其餘以本機為準
+      // 原因：GAS Sheets 回傳的欄位可能不完整（status/salesIdx/contactIdx 可能空值）
+      // 本機的 savedAt 是儲存當下的精確時間，以此為真實來源
+      qResult.quotes.forEach(rq=>{
+        const key=rq.num||rq.id;if(!key)return;
+        const local=localMap.get(key);
+        if(!local){
+          // 本機沒有這筆 → 直接加入（新裝置同步）
+          localMap.set(key,rq);
+        } else {
+          // 本機已有 → 以本機為主，用雲端補本機缺漏的欄位（不覆蓋已有值）
+          const merged={...rq,...local}; // local 優先覆蓋 rq
+          // 關鍵欄位：若本機有值就絕對保留
+          if(local.status)merged.status=local.status;
+          if(local.salesIdx!=null&&local.salesIdx!=='')merged.salesIdx=local.salesIdx;
+          if(local.contactIdx!=null&&local.contactIdx!=='')merged.contactIdx=local.contactIdx;
+          if(local.companyId)merged.companyId=local.companyId;
+          if(local.clientId)merged.clientId=local.clientId;
+          if(local.items?.length)merged.items=local.items;
+          localMap.set(key,merged);
+        }
+      });
+
+      const merged=Array.from(localMap.values());
+      merged.sort((a,b)=>new Date(b.savedAt||b.date||0)-new Date(a.savedAt||a.date||0));
+      lsSet(SK.quotes,merged);
+    }
+  }catch(e){}
+
+  // 資料已載入，執行 pending 的畫面恢復
+  try{
+    const lastTab=localStorage.getItem('qs_last_tab')||'quote';
+    if(lastTab==='quotes'){
+      // API 資料已合併，重新渲染列表並刷新預覽
+      renderQuoteList();
+      if(window._pendingQid){
+        const qid=window._pendingQid;delete window._pendingQid;
+        previewQuote(qid); // 用最新合併後的資料刷新預覽
+      }
+    } else if(lastTab==='companies'){
+      renderCoList();
+      if(window._pendingCoId){
+        const coId=window._pendingCoId;delete window._pendingCoId;
+        const co=companies.find(c=>String(c.id)===String(coId));
+        if(co){editingCoId=String(coId);renderCoList();ge('co-form-area').innerHTML=coForm(co);}
+      }
+    } else if(lastTab==='clients'){
+      renderClientList();
+      if(window._pendingClId){
+        const clId=window._pendingClId;delete window._pendingClId;
+        const cl=clients.find(c=>String(c.id)===String(clId));
+        if(cl){editingClientId=String(clId);renderClientList();ge('cl-form-area').innerHTML=clientForm(cl);}
+      }
+    }
+    // quote tab 的 renderItems/renderPreview 已在上方 q&&q.num 判斷中處理
+  }catch(e){}
+}
+
+// ===== SAVE QUOTE =====
+async function saveQuote(manual){
+  const num=gv('q-num');
+  if(!num){if(manual)showToast('⚠️ 請先產生報價單號');return;}
+  // auto-save 只在報價單編輯器可見時才執行，避免覆蓋其他頁面資料
+  if(!manual && ge('quote-editor')?.style.display==='none') return;
+  setSaveDot('saving','儲存中…');
+  const data={
+    id:num,num,date:gv('q-date'),validity:gv('q-validity'),
+    tax:gv('q-tax'),disc:gv('q-disc'),notes:gv('q-notes'),
+    status:ge('q-status')?.value||'draft',
+    companyId:selectedCompany?.id||null,
+    salesIdx:selectedSalesIdx!=null?Number(selectedSalesIdx):null,
+    clientId:selectedClient?.id||null,
+    contactIdx:selectedContactIdx!=null?Number(selectedContactIdx):null,
+    items,savedAt:new Date().toISOString()
+  };
+  let savedQuotes=lsGet(SK.quotes)||[];
+  const idx=savedQuotes.findIndex(q=>q.id===num);
+  if(idx>=0)savedQuotes[idx]=data;else savedQuotes.unshift(data);
+  lsSet(SK.quotes,savedQuotes);lsSet(SK.quote,data);
+  try{
+    await apiPost({action:'saveQuote',data});
+    setSaveDot('saved','已儲存至雲端');
+    if(manual)showToast('報價單 '+num+' 已儲存 ✓');
+  }catch(e){
+    setSaveDot('saved','已儲存（本機）');
+    if(manual)showToast('⚠️ 雲端連線失敗，已存至本機');
+  }
+}
+
+// ===== SAVE CLIENTS =====
+async function saveClients(cl){
+  lsSet(SK.clients,clients);
+  try{await apiPost({action:'saveClient',data:cl});showToast('客戶資料已同步至雲端 ✓');}
+  catch(e){showToast('⚠️ 雲端連線失敗，已儲存至本機');}
+}
+async function deleteClientRemote(id){
+  lsSet(SK.clients,clients);
+  try{await apiPost({action:'deleteClient',id});}catch(e){}
+}
+
+// ===== SAVE COMPANIES =====
+async function saveCompanies(co){
+  lsSet(SK.companies,companies);
+  try{await apiPost({action:'saveCompany',data:co});showToast('公司資料已同步至雲端 ✓');}
+  catch(e){showToast('⚠️ 雲端連線失敗，已儲存至本機');}
+}
+
+// ===== QUOTE EDITOR SHOW/HIDE =====
+function showQuoteEditor(){
+  ge('quote-empty-state').style.display='none';
+  ge('quote-editor').style.display='grid';
+  ge('quote-save-bar').style.display='flex';
+}
+function hideQuoteEditor(){
+  ge('quote-empty-state').style.display='flex';
+  ge('quote-editor').style.display='none';
+  ge('quote-save-bar').style.display='none';
+}
+
+// ===== TABS =====
+function switchTab(t){
+  // 切換前先停止 auto-save timer，防止跨頁干擾
+  clearTimeout(saveTimer);
+  document.querySelectorAll('.tabnav button').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tabnav button')[['quote','quotes','clients','companies'].indexOf(t)].classList.add('active');
+  ge('tab-'+t).classList.add('active');
+  if(t==='clients')renderClientList();
+  if(t==='companies')renderCoList();
+  if(t==='quotes'){clearTimeout(saveTimer);renderQuoteList();}
+  if(t==='quote'&&ge('quote-editor').style.display!=='none'){renderCoSelect();renderPreview();}
+  try{localStorage.setItem('qs_last_tab',t);}catch(e){}
+}
+
+// ===== COMPANY =====
+function genQuoteNum(){
+  if(!selectedCompany){alert('請先選擇出單公司');return;}
+  const code=selectedCompany.code||selectedCompany.name.slice(0,3).toUpperCase();
+  const today=new Date();
+  const ymd=today.getFullYear().toString()+String(today.getMonth()+1).padStart(2,'0')+String(today.getDate()).padStart(2,'0');
+  const prefix=code+'-'+ymd+'-';
+  const savedQuotes=lsGet(SK.quotes)||[];
+  const todayNums=savedQuotes.map(q=>q.num||q.id||'').filter(n=>n.startsWith(prefix)).map(n=>parseInt(n.replace(prefix,''),10)).filter(n=>!isNaN(n));
+  const maxSeq=todayNums.length?Math.max(...todayNums):0;
+  const num=prefix+String(maxSeq+1).padStart(3,'0');
+  ge('q-num').value=num;markUnsaved();renderPreview();
+}
+function renderCoSelect(){
+  const sel=ge('q-co-sel'),cur=sel.value;
+  sel.innerHTML='<option value="">— 請選擇 —</option>';
+  companies.forEach(c=>{sel.innerHTML+=`<option value="${String(c.id)}">${c.name}</option>`;});
+  if(cur)sel.value=cur;
+}
+function selectCompany(id){
+  selectedCompany=companies.find(c=>String(c.id)===String(id))||null;
+  selectedSalesIdx=null;
+  renderSalesPills();markUnsaved();renderPreview();
+  if(!gv('q-num')&&selectedCompany)genQuoteNum();
+}
+function renderSalesPills(){
+  const wrap=ge('q-sales-wrap'),pills=ge('q-sales-pills');
+  if(!selectedCompany||!selectedCompany.contacts?.length){wrap.style.display='none';return;}
+  wrap.style.display='block';
+  pills.innerHTML=selectedCompany.contacts.map((p,i)=>
+    `<span class="cpill${selectedSalesIdx===i?' active':''}" onclick="toggleSales(${i})" title="${p.title||''}${p.phone?' ／ '+p.phone:''}">${p.name}${p.title?' · '+p.title:''}</span>`
+  ).join('');
+}
+function toggleSales(i){selectedSalesIdx=selectedSalesIdx===i?null:i;renderSalesPills();markUnsaved();renderPreview();}
+
+// ===== CLIENT AC =====
+function acSearch(val){
+  const dd=ge('ac-dd');
+  if(!val.trim()){dd.classList.remove('open');return;}
+  const q=val.toLowerCase();
+  const hits=clients.filter(c=>c.name.toLowerCase().includes(q)||c.tax.includes(q));
+  if(!hits.length){dd.innerHTML='<div class="ac-item"><div class="ac-name" style="color:#aaa">查無符合客戶</div></div>';dd.classList.add('open');return;}
+  dd.innerHTML=hits.map(c=>`<div class="ac-item" onmousedown="pickClient('${c.id}')">
+    <div class="ac-name">${c.name}</div>
+    <div class="ac-sub">統編：${c.tax}　${c.contacts?.length||0} 位承辦人</div>
+  </div>`).join('');
+  dd.classList.add('open');
+}
+function closeAC(){ge('ac-dd').classList.remove('open');}
+function pickClient(id){
+  const cl=clients.find(c=>String(c.id)===String(id));if(!cl)return;
+  closeAC();selectedClient=cl;selectedContactIdx=null;
+  ge('q-cl-search').value=cl.name;
+  renderClientCard();markUnsaved();renderPreview();
+}
+function renderClientCard(){
+  const cl=selectedClient;
+  ge('q-cl-name-badge').textContent=cl.name;
+  ge('q-cl-base').innerHTML=`統編：${cl.tax}${cl.tel?' ／ '+cl.tel:''}<br>${cl.zip?cl.zip+' ':''}${cl.addr||''}`;
+  const pills=ge('q-contact-pills');
+  pills.innerHTML=(cl.contacts||[]).length
+    ?cl.contacts.map((p,i)=>`<span class="cpill${selectedContactIdx===i?' active':''}" onclick="toggleContact(${i})" title="${p.dept||''}${p.title?' '+p.title:''}${p.ext?' 分機：'+p.ext:''}">${p.name}${p.dept?' · '+p.dept:''}</span>`).join('')
+    :'<span style="font-size:12px;color:var(--text3)">（無承辦人資料）</span>';
+  ge('q-cl-info').style.display='block';
+}
+function toggleContact(i){selectedContactIdx=selectedContactIdx===i?null:i;renderClientCard();markUnsaved();renderPreview();}
+function clearClient(){
+  selectedClient=null;selectedContactIdx=null;
+  ge('q-cl-search').value='';ge('q-cl-info').style.display='none';
+  markUnsaved();renderPreview();
+}
+
+// ===== ITEMS =====
+function renderItems(){
+  const c=ge('item-rows');c.innerHTML='';
+  items.forEach((it,i)=>{
+    const wrap=document.createElement('div');wrap.className='item-wrap';
+    wrap.innerHTML=`<div class="item-row">
+<input value="${escHtml(it.desc)}" oninput="items[${i}].desc=this.value;markUnsaved();renderPreview()" placeholder="品項說明">
+<input type="number" value="${it.qty}" min="1" style="text-align:right" oninput="items[${i}].qty=+this.value;updateSub(${i})">
+<input value="${escHtml(it.unit||'')}" oninput="items[${i}].unit=this.value;markUnsaved();renderPreview()" placeholder="式" style="text-align:center">
+<input type="number" value="${it.price}" min="0" style="text-align:right" oninput="items[${i}].price=+this.value;updateSub(${i})">
+<div class="item-subtotal" id="sub-${i}">${fmt(it.qty*it.price)}</div>
+<button class="del-btn" onclick="items.splice(${i},1);renderItems();markUnsaved();renderPreview()">×</button>
+</div>
+<div class="item-remark-row">
+<span class="item-remark-label">備註</span>
+<input class="item-remark-input" value="${escHtml(it.remark||'')}" placeholder="選填：品項說明或備註" oninput="items[${i}].remark=this.value;markUnsaved();renderPreview()">
+</div>`;
+    c.appendChild(wrap);
+  });
+}
+function escHtml(s){return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function updateSub(i){const el=ge('sub-'+i);if(el)el.textContent=fmt(items[i].qty*items[i].price);markUnsaved();renderPreview();}
+function addItem(){
+  items.push({desc:'新品項',qty:1,unit:'',price:0,remark:''});
+  renderItems();markUnsaved();renderPreview();
+  ge('item-rows').querySelectorAll('.item-row')[items.length-1]?.querySelector('input')?.focus();
+}
+
+// ===== PREVIEW =====
+function gv(id){return ge(id)?.value||'';}
+function ge(id){return document.getElementById(id);}
+function fmt(n){return Math.round(n).toLocaleString('zh-TW');}
+function fmtPrice(n,forceInt=false){
+  if(forceInt)return Math.round(n).toLocaleString('zh-TW');
+  return n%1===0?n.toLocaleString('zh-TW'):n.toFixed(2);
+}
+
+// ===== 共用渲染核心 =====
+// ids: { logo, title, num, date, validity, coName, coSub, bankBlock, clBlock,
+//         itemsBody, theadTr, totals, notesEl, signers, footerNum, notesWrap }
+function renderPreviewTo(ids, co, cl, salesIdx, contactIdx, qtItems, disc, taxRate, num, date, validity, notes){
+  const sp = salesIdx!=null ? co?.contacts?.[salesIdx] : null;
+  const cp = contactIdx!=null ? cl?.contacts?.[contactIdx] : null;
+  const brandColor = co?.brandColor || '#185FA5';
+  const invoiceSetting = co?.invoice || 'yes';
+  const taxTypeSetting = cl?.taxType || 'extra';
+  const forceInt = taxTypeSetting === 'included';
+
+  // 品牌色套用
+  const titleEl = ge(ids.title); if(titleEl) titleEl.style.color = brandColor;
+  const numEl = ge(ids.num); if(numEl) numEl.style.color = brandColor;
+  const dateEl = ge(ids.date); if(dateEl) dateEl.style.color = brandColor;
+  const valEl = ge(ids.validity); if(valEl) valEl.style.color = brandColor;
+  const theadTr = ge(ids.theadTr); if(theadTr) theadTr.style.background = brandColor;
+  // grand td 顏色（tbody 內）
+  const totalsEl = ge(ids.totals);
+  if(totalsEl) totalsEl.querySelectorAll('tr.grand td').forEach(td=>td.style.color=brandColor);
+  const notesWrap = ge(ids.notesWrap); if(notesWrap) notesWrap.style.borderLeftColor = brandColor;
+
+  // Logo
+  const logoEl = ge(ids.logo);
+  if(logoEl){
+    if(co?.logo){logoEl.className='qp-logo';logoEl.style.display='flex';logoEl.innerHTML=`<img src="${co.logo}" alt="${escHtml(co.name)} Logo">`;}
+    else{logoEl.className='qp-logo-placeholder';logoEl.style.display='flex';logoEl.innerHTML='';}
+  }
+
+  // 公司資訊
+  const coNameEl = ge(ids.coName), coSubEl = ge(ids.coSub);
+  if(coNameEl){coNameEl.style.display='block';coNameEl.textContent=co?co.name:'（請選擇出單公司）';}
+  if(coSubEl){
+    if(co){let s=`${co.zip?co.zip+' ':''}${co.addr}<br>${co.tel}${co.email?' ／ '+co.email:''}${co.tax?'<br>統編：'+co.tax:''}`;if(sp)s+=`<br>業務：${sp.name}${sp.title?' ('+sp.title+')':''}${sp.phone?' ／ '+sp.phone:''}`;coSubEl.innerHTML=s;}
+    else{coSubEl.innerHTML='';}
+  }
+
+  // 匯款
+  const bankEl = ge(ids.bankBlock);
+  if(bankEl){bankEl.innerHTML=co?`${co.bankName}<br>帳號：${co.bankAcct}`:'（請選擇出單公司）';bankEl.style.color=co?'#444':'#ccc';}
+
+  // 客戶
+  let clHtml='（尚未選擇客戶）';
+  if(cl){
+    clHtml=`<span style="font-size:14px;font-weight:500;color:${brandColor}">${cl.name}</span>`;
+    if(cl.zip||cl.addr)clHtml+=`<br>${cl.zip?cl.zip+' ':''}${cl.addr||''}`;
+    if(cl.tel)clHtml+=`<br>${cl.tel}`;
+    if(cp)clHtml+=`<br>${cp.name}${cp.title?' ('+cp.title+')':''}${cp.ext?' 分機：'+cp.ext:''}`;
+    if(cl.tax)clHtml+=`<br>統編：${cl.tax}`;
+  }
+  const clEl = ge(ids.clBlock); if(clEl){clEl.innerHTML=clHtml;clEl.style.color=cl?'#444':'#ccc';}
+
+  // 單號/日期/效期/備註
+  const numDisp = ge(ids.num); if(numDisp) numDisp.textContent = num;
+  const footerEl = ge(ids.footerNum); if(footerEl) footerEl.textContent = num;
+  const dateDisp = ge(ids.date); if(dateDisp) dateDisp.textContent = '日期：' + date;
+  const valDisp = ge(ids.validity); if(valDisp) valDisp.textContent = '有效期限：' + validity + ' 天';
+  const notesDisp = ge(ids.notesEl); if(notesDisp) notesDisp.textContent = notes;
+
+  // 品項
+  const tbody = ge(ids.itemsBody); if(!tbody) return;
+  tbody.innerHTML = '';
+  let sub = 0;
+  (qtItems||[]).forEach((it,i)=>{
+    const amt = it.qty*it.price; sub += amt;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${i+1}</td><td>${it.desc}</td><td class="r">${fmt(it.qty)}</td><td class="r">${it.unit||''}</td><td class="r">$${fmtPrice(it.price,forceInt)}</td><td class="r">$${fmt(amt)}</td>`;
+    tbody.appendChild(tr);
+    if(it.remark){const tr2=document.createElement('tr');tr2.innerHTML=`<td></td><td colspan="5" style="font-size:10.5px;color:#666;padding-top:2px;padding-bottom:6px;border-bottom:1px solid #d0dae8">　${it.remark}</td>`;tbody.appendChild(tr2);}
+  });
+
+  // 小計/稅金/總計
+  const discAmt = Math.round(sub*disc/100);
+  const afterDisc = sub - discAmt;
+  let th = '', total = afterDisc;
+  if(invoiceSetting==='no'){
+    if(disc>0)th+=`<tr><td style="color:#333">小計</td><td>$${fmt(sub)}</td></tr><tr><td style="color:#333">折扣（${disc}%）</td><td style="color:#A32D2D">-$${fmt(discAmt)}</td></tr>`;
+    else th+=`<tr><td style="color:#333">小計</td><td>$${fmt(sub)}</td></tr>`;
+    th+=`<tr class="grand"><td>總金額</td><td>$${fmt(total)}</td></tr>`;
+  }else if(taxTypeSetting==='included'){
+    const taxAmt=Math.round(afterDisc*taxRate/(100+taxRate));
+    if(disc>0)th+=`<tr><td style="color:#333">小計</td><td>$${fmt(sub)}</td></tr><tr><td style="color:#333">折扣（${disc}%）</td><td style="color:#A32D2D">-$${fmt(discAmt)}</td></tr>`;
+    if(taxRate>0)th+=`<tr><td style="color:#333">含稅（${taxRate}%）</td><td style="color:#666;font-size:11px">已內含 $${fmt(taxAmt)}</td></tr>`;
+    th+=`<tr class="grand"><td>含稅總金額</td><td>$${fmt(total)}</td></tr>`;
+  }else{
+    const taxAmt=Math.round(afterDisc*taxRate/100);total=afterDisc+taxAmt;
+    th+=`<tr><td style="color:#333">小計</td><td>$${fmt(sub)}</td></tr>`;
+    if(disc>0)th+=`<tr><td style="color:#333">折扣（${disc}%）</td><td style="color:#A32D2D">-$${fmt(discAmt)}</td></tr>`;
+    if(taxRate>0)th+=`<tr><td style="color:#333">稅金（${taxRate}%）</td><td>$${fmt(taxAmt)}</td></tr>`;
+    th+=`<tr class="grand"><td>總金額</td><td>$${fmt(total)}</td></tr>`;
+  }
+  if(totalsEl){totalsEl.innerHTML=th;totalsEl.querySelectorAll('tr.grand td').forEach(td=>td.style.color=brandColor);}
+
+  // 簽名欄
+  const sigEl = ge(ids.signers);
+  if(sigEl){
+    const signers=[];
+    if(sp)signers.push(sp.name+(sp.title?'<br><span style="font-size:10px">'+sp.title+'</span>':''));
+    if(cp)signers.push(cp.name+(cp.title?'<br><span style="font-size:10px">'+cp.title+'</span>':''));
+    signers.push('核　准');
+    sigEl.innerHTML=signers.map(s=>`<div class="qp-sign-box">${s}</div>`).join('');
+  }
+}
+
+// 報價單編輯頁的預覽（讀取 DOM 表單值）
+function renderPreview(){
+  const co = selectedCompany;
+  const cl = selectedClient;
+  const brandColor = co?.brandColor || '#185FA5';
+  const invoiceSetting = co?.invoice || 'yes';
+
+  // 品牌色同步至 CSS 變數（影響其他 UI 元素）
+  document.documentElement.style.setProperty('--blue', brandColor);
+
+  // 稅率欄顯示控制
+  const taxField=ge('q-tax-field'),taxNote=ge('q-tax-note');
+  if(taxField&&taxNote){taxField.style.display=invoiceSetting==='no'?'none':'block';taxNote.style.display=invoiceSetting==='no'?'block':'none';}
+
+  renderPreviewTo(
+    {logo:'p-logo',title:'p-title',num:'p-q-num',date:'p-q-date',validity:'p-validity',
+     coName:'p-co-name',coSub:'p-co-sub',bankBlock:'p-bank-block',clBlock:'p-cl-block',
+     itemsBody:'p-items-body',theadTr:'p-thead-tr',totals:'p-totals',
+     notesEl:'p-notes',notesWrap:'p-notes-wrap',signers:'p-signers',footerNum:'p-footer-num'},
+    co, cl, selectedSalesIdx, selectedContactIdx,
+    items, +gv('q-disc')||0, +gv('q-tax')||0,
+    gv('q-num'), gv('q-date'), gv('q-validity'), gv('q-notes')
+  );
+}
+
+// ===== CLIENT MGMT =====
+function renderClientList(search=''){
+  const c=ge('cl-list');
+  const q=(search||'').toLowerCase();
+  const clCount={};
+  (lsGet(SK.quotes)||[]).forEach(qt=>{const id=String(qt.clientId||'');if(id)clCount[id]=(clCount[id]||0)+1;});
+  const sorted=[...clients].sort((a,b)=>{const ca=clCount[String(a.id)]||0,cb=clCount[String(b.id)]||0;if(cb!==ca)return cb-ca;return(a.name||'').localeCompare(b.name||'');});
+  const filtered=q?sorted.filter(cl=>cl.name.toLowerCase().includes(q)||(cl.tax||'').includes(q)):sorted;
+  c.innerHTML=filtered.length
+    ?filtered.map(cl=>`<div class="list-item${String(editingClientId)===String(cl.id)?' selected':''}" onclick="editClient('${cl.id}')">
+        <div class="li-name">${cl.name}</div>
+        <div class="li-sub">統編：${cl.tax||'—'}　${cl.contacts?.length||0} 位承辦人${clCount[String(cl.id)]?'　📄'+clCount[String(cl.id)]+'張':''}</div>
+      </div>`).join('')
+    :'<div style="padding:16px;font-size:12px;color:var(--text3)">'+(q?'查無符合客戶':'尚無客戶資料')+'</div>';
+}
+function editClient(id){
+  editingClientId=String(id);
+  renderClientList();
+  ge('cl-form-area').innerHTML=clientForm(clients.find(c=>String(c.id)===String(id)));
+  try{localStorage.setItem('qs_last_cl_id',String(id));}catch(e){}
+}
+function newClient(){editingClientId=null;renderClientList();ge('cl-form-area').innerHTML=clientForm(null);}
+function cancelClientEdit(){
+  editingClientId=null;
+  renderClientList();
+  ge('cl-form-area').innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:300px;color:var(--text3);font-size:13px">請從左側選擇客戶或新增</div>';
+  try{localStorage.removeItem('qs_last_cl_id');}catch(e){}
+}
+
+function officeSelectOptions(selectedIdx){
+  const opts=['<option value="">—</option>'];
+  (window.clOffices||[]).forEach((o,i)=>opts.push(`<option value="${i}"${selectedIdx===i?' selected':''}>${escHtml(o.name||'辦公室'+(i+1))}</option>`));
+  return opts.join('');
+}
+function clientForm(cl){
+  const v=(x)=>cl?escHtml(cl[x]||''):'';
+  window.clOffices=(cl?.offices||[]).map(o=>({...o}));
+  window.clContacts=(cl?.contacts||[]).map(p=>({...p,officeIdx:p.officeIdx??null}));
+  const rows=()=>{
+    const hasOffices=(window.clOffices||[]).length>0;
+    return window.clContacts.map((p,i)=>`<tr>
+    <td><input value="${escHtml(p.name||'')}" oninput="clContacts[${i}].name=this.value" placeholder="姓名"></td>
+    ${hasOffices?`<td><select onchange="clContacts[${i}].officeIdx=this.value===''?null:+this.value">${officeSelectOptions(p.officeIdx)}</select></td>`:''}
+    <td><input value="${escHtml(p.dept||'')}" oninput="clContacts[${i}].dept=this.value" placeholder="單位/部門"></td>
+    <td><input value="${escHtml(p.title||'')}" oninput="clContacts[${i}].title=this.value" placeholder="職稱"></td>
+    <td><input value="${escHtml(p.ext||'')}" oninput="clContacts[${i}].ext=this.value" placeholder="分機"></td>
+    <td><input value="${escHtml(p.mobile||'')}" oninput="clContacts[${i}].mobile=this.value" placeholder="手機"></td>
+    <td><input value="${escHtml(p.email||'')}" oninput="clContacts[${i}].email=this.value" placeholder="Email"></td>
+    <td><input value="${escHtml(p.note||'')}" oninput="clContacts[${i}].note=this.value" placeholder="備註"></td>
+    <td><button class="del-btn" onclick="rmClContact(${i})">×</button></td>
+  </tr>`).join('');
+  };
+  // setTimeout 0: 讓 DOM 先插入，再渲染辦公室表格
+  setTimeout(()=>{refreshClOfficeTable();},0);
+  return`<h3>${cl?'編輯客戶':'新增客戶'}</h3>
+<div class="form-grid">
+  <div class="field"><label>客戶名稱 *</label><input id="cf-name" value="${v('name')}"></div>
+  <div class="field"><label>統一編號</label><input id="cf-tax" value="${v('tax')}" inputmode="numeric" maxlength="8"></div>
+  <div class="field"><label>公司電話</label><input id="cf-tel" value="${v('tel')}" placeholder="例：02-2345-6789"></div>
+  <div class="field"><label>傳真</label><input id="cf-fax" value="${v('fax')}" placeholder="例：02-2345-6780"></div>
+  <div class="field"><label>稅金設定</label>
+    <select id="cf-taxtype">
+      <option value="extra" ${(cl?.taxType||'extra')==='extra'?'selected':''}>外加稅（一般公司行號）</option>
+      <option value="included" ${cl?.taxType==='included'?'selected':''}>含稅（公家單位）</option>
+    </select>
+  </div>
+  <div class="field"><label>公司郵遞區號</label><input id="cf-zip" value="${v('zip')}" placeholder="例：106"></div>
+  <div class="field" style="grid-column:1/-1"><label>公司地址</label><input id="cf-addr" value="${v('addr')}"></div>
+  <div class="section-sep">辦公室（可多處）</div>
+  <div class="person-section">
+    <table class="person-table" id="cl-office-table">
+      <thead><tr><th>辦公室名稱</th><th>地址</th><th>電話</th><th>傳真</th><th style="width:28px"></th></tr></thead>
+      <tbody id="cl-office-body"></tbody>
+    </table>
+    <button class="add-person-btn" onclick="addClOffice()">＋ 新增辦公室</button>
+  </div>
+  <div class="section-sep">承辦人（可多位）</div>
+  <div class="person-section">
+    <table class="person-table">
+      <thead id="cl-ct-head"><tr><th>姓名</th><th>單位／部門</th><th>職稱</th><th>分機</th><th>手機</th><th>Email</th><th>備註</th><th style="width:28px"></th></tr></thead>
+      <tbody id="cl-ct-body">${rows()}</tbody>
+    </table>
+    <button class="add-person-btn" onclick="addClContact()">＋ 新增承辦人</button>
+  </div>
+</div>
+<div class="btn-row">
+  <button class="btn btn-danger btn-sm" onclick="deleteClient('${cl?cl.id:-1}')" ${!cl?'style="visibility:hidden"':''}>刪除客戶</button>
+  <div style="display:flex;gap:8px">
+    <button class="btn btn-sm" onclick="cancelClientEdit()">取消</button>
+    <button class="btn btn-primary btn-sm" onclick="saveClientForm('${cl?cl.id:-1}')">儲存</button>
+  </div>
+</div>`;
+}
+function addClContact(){window.clContacts.push({name:'',officeIdx:null,dept:'',title:'',ext:'',mobile:'',email:'',note:''});refreshClTable();}
+function rmClContact(i){window.clContacts.splice(i,1);refreshClTable();}
+function refreshClTable(){
+  const b=ge('cl-ct-body');if(!b)return;
+  const hasOffices=(window.clOffices||[]).length>0;
+  // 同步更新表頭
+  const head=ge('cl-ct-head');
+  if(head){
+    head.innerHTML=`<tr>
+      <th>姓名</th>
+      ${hasOffices?'<th>辦公室</th>':''}
+      <th>單位／部門</th><th>職稱</th><th>分機</th><th>手機</th><th>Email</th><th>備註</th>
+      <th style="width:28px"></th>
+    </tr>`;
+  }
+  b.innerHTML=window.clContacts.map((p,i)=>`<tr>
+    <td><input value="${escHtml(p.name||'')}" oninput="clContacts[${i}].name=this.value" placeholder="姓名"></td>
+    ${hasOffices?`<td><select onchange="clContacts[${i}].officeIdx=this.value===''?null:+this.value">${officeSelectOptions(p.officeIdx)}</select></td>`:''}
+    <td><input value="${escHtml(p.dept||'')}" oninput="clContacts[${i}].dept=this.value" placeholder="單位/部門"></td>
+    <td><input value="${escHtml(p.title||'')}" oninput="clContacts[${i}].title=this.value" placeholder="職稱"></td>
+    <td><input value="${escHtml(p.ext||'')}" oninput="clContacts[${i}].ext=this.value" placeholder="分機"></td>
+    <td><input value="${escHtml(p.mobile||'')}" oninput="clContacts[${i}].mobile=this.value" placeholder="手機"></td>
+    <td><input value="${escHtml(p.email||'')}" oninput="clContacts[${i}].email=this.value" placeholder="Email"></td>
+    <td><input value="${escHtml(p.note||'')}" oninput="clContacts[${i}].note=this.value" placeholder="備註"></td>
+    <td><button class="del-btn" onclick="rmClContact(${i})">×</button></td>
+  </tr>`).join('');
+}
+// ===== OFFICE MGMT =====
+function addClOffice(){
+  window.clOffices.push({name:'',addr:'',tel:'',fax:''});
+  refreshClOfficeTable();refreshClTable(); // 更新承辦人下拉
+}
+function rmClOffice(i){
+  // 清除承辦人的 officeIdx 引用
+  window.clContacts.forEach(p=>{if(p.officeIdx===i)p.officeIdx=null;else if(p.officeIdx>i)p.officeIdx--;});
+  window.clOffices.splice(i,1);
+  refreshClOfficeTable();refreshClTable();
+}
+function refreshClOfficeTable(){
+  const b=ge('cl-office-body');if(!b)return;
+  b.innerHTML=window.clOffices.map((o,i)=>`<tr>
+    <td><input value="${escHtml(o.name||'')}" oninput="clOffices[${i}].name=this.value;refreshClTable()" placeholder="例：台北辦公室"></td>
+    <td><input value="${escHtml(o.addr||'')}" oninput="clOffices[${i}].addr=this.value" placeholder="地址"></td>
+    <td><input value="${escHtml(o.tel||'')}" oninput="clOffices[${i}].tel=this.value" placeholder="電話"></td>
+    <td><input value="${escHtml(o.fax||'')}" oninput="clOffices[${i}].fax=this.value" placeholder="傳真"></td>
+    <td><button class="del-btn" onclick="rmClOffice(${i})">×</button></td>
+  </tr>`).join('');
+}
+function saveClientForm(id){
+  const name=ge('cf-name')?.value.trim();if(!name){alert('請輸入客戶名稱');return;}
+  const contacts=(window.clContacts||[]).filter(p=>p.name.trim());
+  const offices=(window.clOffices||[]).filter(o=>o.name.trim());
+  const data={name,tax:ge('cf-tax')?.value.trim()||'',tel:ge('cf-tel')?.value.trim()||'',fax:ge('cf-fax')?.value.trim()||'',taxType:ge('cf-taxtype')?.value||'extra',
+    zip:ge('cf-zip')?.value.trim()||'',addr:ge('cf-addr')?.value.trim()||'',offices,contacts};
+  if(id==='-1'||id===-1){
+    data.id=String(Date.now());
+    clients.push(data);
+  } else {
+    const i=clients.findIndex(c=>String(c.id)===String(id));
+    data.id=String(id);
+    if(i>=0) clients[i]=data; else clients.push(data);
+  }
+  editingClientId=String(data.id);
+  // 同步更新 window.clContacts，避免二次渲染時重複
+  window.clOffices=(offices||[]).map(o=>({...o}));
+  window.clContacts=contacts.map(p=>({...p}));
+  saveClients(data);
+  renderClientList();
+  showToast('客戶已儲存 ✓');
+}
+function deleteClient(id){
+  if(!confirm('確定要刪除此客戶？'))return;
+  clients=clients.filter(c=>String(c.id)!==String(id));editingClientId=null;
+  deleteClientRemote(String(id));renderClientList();cancelClientEdit();
+  if(String(selectedClient?.id)===String(id)){selectedClient=null;renderPreview();}
+}
+
+// ===== COMPANY MGMT =====
+function renderCoList(){
+  // dedup before counting
+  const rawQ=lsGet(SK.quotes)||[];
+  const seenQ=new Map();
+  rawQ.forEach(q=>{const k=q.num||q.id;if(!k)return;const ex=seenQ.get(k);if(!ex||new Date(q.savedAt||0)>new Date(ex.savedAt||0))seenQ.set(k,q);});
+  const savedQ=Array.from(seenQ.values());
+  const coCount={};
+  savedQ.forEach(q=>{const id=String(q.companyId||'');if(id)coCount[id]=(coCount[id]||0)+1;});
+  const sortedCos=[...companies].sort((a,b)=>{const ca=coCount[String(a.id)]||0,cb=coCount[String(b.id)]||0;if(cb!==ca)return cb-ca;return(a.name||'').localeCompare(b.name||'');});
+  ge('co-list').innerHTML=sortedCos.map(co=>`<div class="list-item${String(editingCoId)===String(co.id)?' selected':''}" onclick="editCo('${co.id}')">
+    <div class="li-name">${co.logo?'🖼 ':''} ${co.name}${coCount[String(co.id)]?` <span style="font-size:10px;color:var(--blue)">(${coCount[String(co.id)]}張)</span>`:''}</div>
+    <div class="li-sub">代碼：${co.code||'—'}　統編：${co.tax||'—'}　${co.contacts?.length||0} 位業務</div>
+  </div>`).join('');
+}
+function newCo(){
+  editingCoId=null;renderCoList();
+  const tempCo={id:'new_'+Date.now(),name:'',code:'',tax:'',zip:'',addr:'',tel:'',email:'',contacts:[],bankName:'',bankAcct:'',logo:'',brandColor:'#185FA5'};
+  ge('co-form-area').innerHTML=coForm(tempCo,true);
+}
+function editCo(id){
+  editingCoId=String(id);
+  renderCoList();
+  ge('co-form-area').innerHTML=coForm(companies.find(c=>String(c.id)===String(id)));
+  try{localStorage.setItem('qs_last_co_id',String(id));}catch(e){}
+}
+function cancelCoEdit(){
+  editingCoId=null;
+  renderCoList();
+  ge('co-form-area').innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:300px;color:var(--text3);font-size:13px">請從左側選擇公司</div>';
+  try{localStorage.removeItem('qs_last_co_id');}catch(e){}
+}
+
+function coForm(co,isNew=false){
+  const v=(x)=>co?escHtml(co[x]||''):'';
+  window.coContacts=(co?.contacts||[]).map(p=>({...p}));
+  const rows=()=>window.coContacts.map((p,i)=>`<tr>
+    <td><input value="${escHtml(p.name||'')}" oninput="coContacts[${i}].name=this.value" placeholder="姓名"></td>
+    <td><input value="${escHtml(p.title||'')}" oninput="coContacts[${i}].title=this.value" placeholder="職稱"></td>
+    <td><input value="${escHtml(p.phone||'')}" oninput="coContacts[${i}].phone=this.value" placeholder="電話"></td>
+    <td><button class="del-btn" onclick="rmCoContact(${i})">×</button></td>
+  </tr>`).join('');
+  const logoSrc=co?.logo||'';
+  return`<h3>${isNew?'新增公司':'編輯公司資料'}</h3>
+<div class="form-grid">
+  <div class="field"><label>公司名稱 *</label><input id="cof-name" value="${v('name')}"></div>
+  <div class="field"><label>公司代碼 *</label><input id="cof-code" value="${v('code')}" placeholder="例：ABC（用於報價單號）"></div>
+  <div class="field"><label>發票設定</label>
+    <select id="cof-invoice">
+      <option value="yes" ${(co?.invoice||'yes')==='yes'?'selected':''}>開立發票（含稅設定依客戶）</option>
+      <option value="no" ${co?.invoice==='no'?'selected':''}>不開發票（報價單不顯示稅金）</option>
+    </select>
+  </div>
+  <div class="field"></div>
+  <div class="section-sep" style="margin-top:0">品牌色設定</div>
+  <div class="field"><label>主色（報價單標題、欄位等）</label>
+    <div style="display:flex;gap:8px;align-items:center">
+      <input type="color" id="cof-color" value="${co?.brandColor||'#185FA5'}" style="width:48px;height:34px;padding:2px;border:1px solid #ccc;border-radius:4px;cursor:pointer" oninput="ge('cof-color-hex').value=this.value;ge('cof-color-preview').style.color=this.value">
+      <input id="cof-color-hex" value="${co?.brandColor||'#185FA5'}" placeholder="#185FA5" style="flex:1;font-size:13px" oninput="ge('cof-color').value=this.value">
+      <button class="btn btn-xs" onclick="ge('cof-color').value='#185FA5';ge('cof-color-hex').value='#185FA5'">重設</button>
+    </div>
+  </div>
+  <div class="field"><label>預覽</label>
+    <div style="font-size:14px;font-weight:500;padding:6px 10px;border-radius:4px;border:1px solid #eee;color:${co?.brandColor||'#185FA5'}" id="cof-color-preview">報 價 單 · ${escHtml(co?.name||'公司名稱')}</div>
+  </div>
+  <div class="field"><label>統一編號</label><input id="cof-tax" value="${v('tax')}" inputmode="numeric" maxlength="8"></div>
+  <div class="field"><label>郵遞區號</label><input id="cof-zip" value="${v('zip')}" placeholder="例：110"></div>
+  <div class="field"></div>
+  <div class="field" style="grid-column:1/-1"><label>公司地址</label><input id="cof-addr" value="${v('addr')}"></div>
+  <div class="field"><label>總機電話</label><input id="cof-tel" value="${v('tel')}"></div>
+  <div class="field"><label>公司信箱</label><input id="cof-email" value="${v('email')}"></div>
+  <div class="section-sep">公司 Logo</div>
+  <div class="logo-upload-zone" onclick="ge('cof-logo-input').click()">
+    <input type="file" id="cof-logo-input" accept="image/*" onchange="handleLogoUpload(this,'${co.id}')">
+    <div style="font-size:13px;color:var(--blue);margin-bottom:4px">點擊上傳 Logo 圖片</div>
+    <div style="font-size:11px;color:var(--text3)">支援 PNG、JPG、SVG，建議長方形比例</div>
+  </div>
+  <div style="grid-column:1/-1;margin-top:6px">
+    <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">或貼上圖片網址</label>
+    <div style="display:flex;gap:8px">
+      <input id="cof-logo-url" placeholder="https://drive.google.com/uc?export=view&id=..." style="flex:1;font-size:12px;padding:6px 8px;border:1px solid #ccc;border-radius:var(--radius);background:var(--bg)" value="${logoSrc&&!logoSrc.startsWith('data:')?logoSrc:''}">
+      <button class="btn btn-sm" onclick="handleLogoUrl('${co.id}')">套用</button>
+    </div>
+  </div>
+  <div id="cof-logo-preview-wrap" class="logo-preview-wrap" style="${logoSrc?'display:flex':'display:none'};grid-column:1/-1">
+    <img class="logo-preview-img" id="cof-logo-preview" src="${logoSrc||''}" alt="Logo 預覽" onerror="this.style.display='none';ge('cof-logo-error').style.display='block'">
+    <span id="cof-logo-error" style="display:none;font-size:12px;color:var(--red)">⚠️ 圖片載入失敗</span>
+    <button class="btn btn-xs btn-danger" onclick="removeLogo('${co.id}')">移除 Logo</button>
+  </div>
+  <div class="section-sep">業務人員（可多位）</div>
+  <div class="person-section">
+    <table class="person-table">
+      <thead><tr><th>姓名</th><th>職稱</th><th>直撥電話</th><th style="width:32px"></th></tr></thead>
+      <tbody id="co-ct-body">${rows()}</tbody>
+    </table>
+    <button class="add-person-btn" onclick="addCoContact()">＋ 新增業務人員</button>
+  </div>
+  <div class="section-sep">匯款資訊</div>
+  <div class="field" style="grid-column:1/-1"><label>銀行名稱</label><input id="cof-bank" value="${v('bankName')}"></div>
+  <div class="field" style="grid-column:1/-1"><label>帳號</label><input id="cof-acct" value="${v('bankAcct')}"></div>
+</div>
+<div class="btn-row">
+  ${isNew?'<div></div>':`<button class="btn btn-danger btn-sm" onclick="deleteCoConfirm('${co.id}')">刪除公司</button>`}
+  <div style="display:flex;gap:8px">
+    <button class="btn btn-sm" onclick="cancelCoEdit()">取消</button>
+    <button class="btn btn-primary btn-sm" onclick="saveCoForm('${co.id}','${isNew}')">儲存</button>
+  </div>
+</div>`;
+}
+
+async function handleLogoUrl(coId){
+  const urlInput=ge('cof-logo-url');if(!urlInput)return;
+  const url=urlInput.value.trim();if(!url){alert('請輸入圖片網址');return;}
+  let finalUrl=url;
+  const driveMatch=url.match(/\/file\/d\/([^/]+)/);
+  if(driveMatch)finalUrl=`https://drive.google.com/uc?export=view&id=${driveMatch[1]}`;
+  const i=companies.findIndex(c=>String(c.id)===String(coId));
+  if(i>=0){
+    companies[i].logo=finalUrl;lsSet(SK.companies,companies);
+    const preview=ge('cof-logo-preview'),wrap=ge('cof-logo-preview-wrap'),errEl=ge('cof-logo-error');
+    if(preview){preview.src=finalUrl;preview.style.display='';}if(wrap)wrap.style.display='flex';if(errEl)errEl.style.display='none';
+    try{await saveCompanies(companies[i]);}catch(err){showToast('⚠️ 已存本機，雲端同步失敗');}
+    renderPreview();
+  }
+}
+function handleLogoUpload(input,coId){
+  const file=input.files[0];if(!file)return;
+  const isSvg=file.type==='image/svg+xml'||file.name.toLowerCase().endsWith('.svg');
+  if(isSvg){
+    const reader=new FileReader();
+    reader.onload=async function(e){const b64=btoa(unescape(encodeURIComponent(e.target.result)));await _applyLogo(`data:image/svg+xml;base64,${b64}`,coId);};
+    reader.readAsText(file,'utf-8');
+  }else{
+    const reader=new FileReader();
+    reader.onload=async function(e){await _applyLogo(e.target.result,coId);};
+    reader.readAsDataURL(file);
+  }
+}
+async function _applyLogo(dataUrl,coId){
+  const preview=ge('cof-logo-preview'),wrap=ge('cof-logo-preview-wrap'),errEl=ge('cof-logo-error');
+  if(preview){preview.src=dataUrl;preview.style.display='';}if(wrap)wrap.style.display='flex';if(errEl)errEl.style.display='none';
+  const i=companies.findIndex(c=>String(c.id)===String(coId));
+  if(i>=0){companies[i].logo=dataUrl;lsSet(SK.companies,companies);try{await saveCompanies(companies[i]);}catch(err){showToast('⚠️ Logo 已存本機，雲端同步失敗');}}
+  renderPreview();
+}
+async function removeLogo(coId){
+  const i=companies.findIndex(c=>String(c.id)===String(coId));
+  if(i>=0){companies[i].logo='';lsSet(SK.companies,companies);try{await saveCompanies(companies[i]);showToast('Logo 已移除 ✓');}catch(e){}}
+  const wrap=ge('cof-logo-preview-wrap'),preview=ge('cof-logo-preview'),urlInput=ge('cof-logo-url');
+  if(wrap)wrap.style.display='none';if(preview)preview.src='';if(urlInput)urlInput.value='';
+  renderPreview();
+}
+function addCoContact(){window.coContacts.push({name:'',title:'',phone:''});refreshCoTable();const rows=ge('co-ct-body')?.querySelectorAll('tr');if(rows?.length)rows[rows.length-1].querySelector('input')?.focus();}
+function rmCoContact(i){window.coContacts.splice(i,1);refreshCoTable();}
+function refreshCoTable(){
+  const b=ge('co-ct-body');if(!b)return;
+  b.innerHTML=window.coContacts.map((p,i)=>`<tr>
+    <td><input value="${escHtml(p.name||'')}" oninput="coContacts[${i}].name=this.value" placeholder="姓名"></td>
+    <td><input value="${escHtml(p.title||'')}" oninput="coContacts[${i}].title=this.value" placeholder="職稱"></td>
+    <td><input value="${escHtml(p.phone||'')}" oninput="coContacts[${i}].phone=this.value" placeholder="電話"></td>
+    <td><button class="del-btn" onclick="rmCoContact(${i})">×</button></td>
+  </tr>`).join('');
+}
+function saveCoForm(id,isNew='false'){
+  const name=ge('cof-name')?.value.trim();if(!name){alert('請輸入公司名稱');return;}
+  const data={name,code:ge('cof-code')?.value.trim(),tax:ge('cof-tax')?.value.trim()||'',brandColor:ge('cof-color')?.value||'#185FA5',invoice:ge('cof-invoice')?.value||'yes',
+    zip:ge('cof-zip')?.value.trim(),addr:ge('cof-addr')?.value.trim(),tel:ge('cof-tel')?.value.trim(),email:ge('cof-email')?.value.trim(),
+    contacts:(window.coContacts||[]).filter(p=>p.name.trim()),bankName:ge('cof-bank')?.value.trim(),bankAcct:ge('cof-acct')?.value.trim()};
+  if(isNew==='true'||isNew===true){data.id=String(Date.now());data.logo='';companies.push(data);}
+  else{const i=companies.findIndex(c=>String(c.id)===String(id));if(i<0){alert('找不到公司資料');return;}data.id=String(id);data.logo=companies[i].logo||'';companies[i]=data;}
+  editingCoId=String(data.id);
+  // 同步更新 window.coContacts，避免重渲染時重複
+  window.coContacts=(data.contacts||[]).map(p=>({...p}));
+  saveCompanies(data);renderCoList();renderCoSelect();
+  showToast('公司已儲存 ✓');
+}
+function deleteCoConfirm(id){
+  if(!confirm('確定要刪除此公司？此操作無法還原。'))return;
+  companies=companies.filter(c=>String(c.id)!==String(id));editingCoId=null;lsSet(SK.companies,companies);
+  renderCoList();cancelCoEdit();renderCoSelect();
+  if(String(selectedCompany?.id)===String(id)){selectedCompany=null;selectedSalesIdx=null;renderPreview();}
+  showToast('公司已刪除');
+}
+
+// ===== SEND BY EMAIL =====
+function sendByEmail(){
+  const co=selectedCompany,cl=selectedClient;
+  const cp=selectedContactIdx!=null?cl?.contacts?.[selectedContactIdx]:null;
+  if(!co){showToast('請先選擇出單公司');return;}
+  if(!cl){showToast('請先選擇客戶');return;}
+  const toEmail=cp?.email||'';
+  const num=gv('q-num')||'（未產生單號）';
+  const subject=encodeURIComponent(`報價單 ${num} - ${cl.name}`);
+  let sub=0;items.forEach(it=>sub+=it.qty*it.price);
+  const disc=+gv('q-disc')||0,tax=+gv('q-tax')||0;
+  const afterDisc=sub-Math.round(sub*disc/100);
+  const total=afterDisc+Math.round(afterDisc*tax/100);
+  const itemLines=items.map((it,i)=>`  ${i+1}. ${it.desc}  x${it.qty}${it.unit?it.unit:''}  $${fmt(it.price)}  小計 $${fmt(it.qty*it.price)}`).join('\n');
+  const body=encodeURIComponent(`${cl.name}　${cp?cp.name+' 您好':'您好'}，\n\n感謝您的詢價，以下為報價單明細，請惠予審閱：\n\n報價單號：${num}\n報價日期：${gv('q-date')}\n有效期限：${gv('q-validity')} 天\n\n【報價品項】\n${itemLines}\n\n總金額：$${fmt(total)}${tax>0?'（含稅）':''}\n\n${gv('q-notes')||''}\n\n如有任何問題，歡迎隨時與我們聯繫。\n\n${co.name}\n${co.email||''}\n${co.tel||''}\n`);
+  if(!toEmail)showToast('⚠️ 承辦人未填寫 Email，將開啟空白收件人');
+  window.location.href=`mailto:${toEmail}?subject=${subject}&body=${body}`;
+}
+
+// ===== CLEAR LOCAL CACHE =====
+function clearLocalCache(){
+  if(!confirm('確定要清除本機快取？\n系統會重新從雲端載入所有資料。'))return;
+  Object.values(SK).forEach(key=>localStorage.removeItem(key));
+  showToast('本機快取已清除，重新載入中…');
+  setTimeout(()=>location.reload(),800);
+}
+
+// ===== EXPORT / IMPORT =====
+function exportData(){
+  saveQuote(false);
+  const payload={version:1,exportedAt:new Date().toISOString(),companies,clients,quotes:lsGet(SK.quotes)||[],
+    quote:{num:gv('q-num'),date:gv('q-date'),validity:gv('q-validity'),tax:gv('q-tax'),disc:gv('q-disc'),notes:gv('q-notes'),status:ge('q-status')?.value||'draft',
+      companyId:selectedCompany?.id||null,salesIdx:selectedSalesIdx,clientId:selectedClient?.id||null,contactIdx:selectedContactIdx,items}};
+  const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download=`報價單系統備份_${new Date().toISOString().slice(0,10)}.json`;a.click();
+  URL.revokeObjectURL(url);showToast('備份已匯出 ✓');
+}
+function importData(input){
+  const file=input.files[0];if(!file)return;input.value='';
+  const reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      const payload=JSON.parse(e.target.result);
+      if(!payload.version||!payload.companies||!payload.clients){alert('檔案格式不符');return;}
+      if(!confirm(`確定要匯入備份？\n匯出時間：${payload.exportedAt?.replace('T',' ').slice(0,19)||'不明'}\n\n這將覆蓋目前所有資料。`))return;
+      companies=payload.companies;clients=payload.clients;
+      const q=payload.quote;items=q.items||[];
+      lsSet(SK.companies,companies);lsSet(SK.clients,clients);lsSet(SK.quote,q);
+      if(payload.quotes)lsSet(SK.quotes,payload.quotes);
+      if(q.num)ge('q-num').value=q.num;if(q.date)ge('q-date').value=q.date;if(q.validity)ge('q-validity').value=q.validity;
+      if(q.tax!=null)ge('q-tax').value=q.tax;if(q.disc!=null)ge('q-disc').value=q.disc;if(q.notes)ge('q-notes').value=q.notes;
+      if(q.status)ge('q-status').value=q.status;
+      selectedCompany=q.companyId?companies.find(c=>c.id==q.companyId)||null:null;selectedSalesIdx=q.salesIdx??null;
+      selectedClient=q.clientId?clients.find(c=>c.id==q.clientId)||null:null;selectedContactIdx=q.contactIdx??null;
+      ge('q-cl-search').value=selectedClient?.name||'';
+      if(selectedClient)renderClientCard();else ge('q-cl-info').style.display='none';
+      renderCoSelect();if(selectedCompany){ge('q-co-sel').value=selectedCompany.id;renderSalesPills();}else{ge('q-co-sel').value='';ge('q-sales-wrap').style.display='none';}
+      showQuoteEditor();renderItems();renderPreview();setSaveDot('saved','已儲存');showToast('備份匯入成功 ✓');
+    }catch(err){alert('匯入失敗：'+err.message);}
+  };
+  reader.readAsText(file,'utf-8');
+}
+
+// ===== QUOTES MANAGEMENT =====
+let selectedQuoteId=null;
+
+function filterQuotes(f){
+  quoteFilter=f;
+  ['all','draft','sent','accepted'].forEach(k=>{
+    const el=ge('qf-'+k);if(!el)return;
+    const isActive=k===f;
+    el.style.background=isActive?'var(--blue)':'';
+    el.style.color=isActive?'#fff':'';
+    el.style.borderColor=isActive?'var(--blue)':'';
+  });
+  renderQuoteList(ge('q-search')?.value||'');
+}
+
+function statusTag(s){
+  const map={draft:'草稿 qli-tag-draft',sent:'已發送 qli-tag-sent',accepted:'已接受 qli-tag-accepted',cancelled:'已取消 qli-tag-cancelled'};
+  const val=map[s]||'草稿 qli-tag-draft';const parts=val.split(' ');
+  return`<span class="qli-tag ${parts[1]}">${parts[0]}</span>`;
+}
+
+function renderQuoteList(search=''){
+  // dedup by num before rendering
+  let raw=lsGet(SK.quotes)||[];
+  const seenNums=new Map();
+  raw.forEach(q=>{const k=q.num||q.id;if(!k)return;const ex=seenNums.get(k);if(!ex||new Date(q.savedAt||0)>new Date(ex.savedAt||0))seenNums.set(k,q);});
+  let savedQuotes=Array.from(seenNums.values()).sort((a,b)=>new Date(b.savedAt||b.date||0)-new Date(a.savedAt||a.date||0));
+  const q=(search||'').toLowerCase();
+  if(q)savedQuotes=savedQuotes.filter(qt=>(qt.num||'').toLowerCase().includes(q)||getClientName(qt.clientId).toLowerCase().includes(q));
+  if(quoteFilter&&quoteFilter!=='all')savedQuotes=savedQuotes.filter(qt=>(qt.status||'draft')===quoteFilter);
+  const el=ge('quotes-list');if(!el)return;
+  if(!savedQuotes.length){el.innerHTML='<div style="padding:16px;font-size:12px;color:var(--text3)">'+(q||quoteFilter!=='all'?'查無符合報價單':'尚無儲存的報價單')+'</div>';return;}
+  el.innerHTML=savedQuotes.map(qt=>{
+    const clName=getClientName(qt.clientId);const coName=getCompanyName(qt.companyId);
+    const date=qt.date||qt.savedAt?.slice(0,10)||'';const qid=qt.id||qt.num;const isSelected=qid===selectedQuoteId;
+    return`<div class="quote-list-item${isSelected?' selected':''}" data-qid="${qid}" onclick="previewQuote('${qid}')">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div class="qli-num">${qt.num||qt.id}${statusTag(qt.status||'draft')}</div>
+        <div class="qli-date">${date}</div>
+      </div>
+      <div class="qli-cl">${coName?coName+'　':''}${clName||'（無客戶）'}</div>
+    </div>`;
+  }).join('');
+}
+
+function getClientName(id){if(!id)return'';const cl=clients.find(c=>String(c.id)===String(id));return cl?.name||'';}
+function getCompanyName(id){if(!id)return'';const co=companies.find(c=>String(c.id)===String(id));return co?.name||'';}
+
+function previewQuote(id){
+  clearTimeout(saveTimer); // 停止任何待執行的 auto-save
+  selectedQuoteId=id;
+  // 只更新列表選中狀態，不重讀 localStorage（避免 auto-save 競爭）
+  document.querySelectorAll('.quote-list-item').forEach(el=>{
+    el.classList.toggle('selected', el.dataset.qid===id);
+  });
+  const savedQuotes=lsGet(SK.quotes)||[];
+  const qt=savedQuotes.find(q=>(q.id||q.num)===id);if(!qt)return;
+
+  // 工具列
+  const toolbar=ge('quotes-toolbar'),numLabel=ge('qt-num-label');
+  if(toolbar)toolbar.style.display='flex';
+  if(numLabel)numLabel.textContent=(qt.num||qt.id)+(qt.status?'　'+{draft:'草稿',sent:'已發送',accepted:'已接受',cancelled:'已取消'}[qt.status]||'':'');
+
+  // 顯示 quote-paper，隱藏空白提示
+  ge('q2-empty').style.display='none';
+  ge('q2-paper').style.display='block';
+
+  // 取出對應的公司、客戶
+  const co=companies.find(c=>String(c.id)===String(qt.companyId))||null;
+  const cl=clients.find(c=>String(c.id)===String(qt.clientId))||null;
+
+  // 呼叫共用渲染核心
+  // 記住上次選取的報價單 id
+  try{localStorage.setItem('qs_last_qid',id);}catch(e){}
+  // salesIdx/contactIdx 從 GAS 回來可能是字串，強制轉數字
+  const sIdx = qt.salesIdx!=null && qt.salesIdx!=='' ? Number(qt.salesIdx) : null;
+  const cIdx = qt.contactIdx!=null && qt.contactIdx!=='' ? Number(qt.contactIdx) : null;
+  renderPreviewTo(
+    {logo:'q2-logo',title:'q2-title',num:'q2-q-num',date:'q2-q-date',validity:'q2-validity',
+     coName:'q2-co-name',coSub:'q2-co-sub',bankBlock:'q2-bank-block',clBlock:'q2-cl-block',
+     itemsBody:'q2-items-body',theadTr:'q2-thead-tr',totals:'q2-totals',
+     notesEl:'q2-notes',notesWrap:'q2-notes-wrap',signers:'q2-signers',footerNum:'q2-footer-num'},
+    co, cl, sIdx, cIdx,
+    qt.items||[], +qt.disc||0, +qt.tax||0,
+    qt.num||'', qt.date||'', qt.validity||'', qt.notes||''
+  );
+}
+
+function editSelectedQuote(){
+  if(!selectedQuoteId){showToast('請先選擇報價單');return;}
+  openQuote(selectedQuoteId);
+}
+
+function copySelectedQuote(){
+  if(!selectedQuoteId){showToast('請先選擇報價單');return;}
+  const savedQuotes=lsGet(SK.quotes)||[];
+  const qt=savedQuotes.find(q=>(q.id||q.num)===selectedQuoteId);
+  if(!qt){showToast('找不到報價單資料');return;}
+  // 以複製時間產生新單號
+  const co=companies.find(c=>String(c.id)===String(qt.companyId))||null;
+  const code=co?.code||co?.name?.slice(0,3).toUpperCase()||'CPY';
+  const now=new Date();
+  const ymd=now.getFullYear().toString()+String(now.getMonth()+1).padStart(2,'0')+String(now.getDate()).padStart(2,'0');
+  const prefix=code+'-'+ymd+'-';
+  const todayNums=savedQuotes.map(q=>q.num||q.id||'').filter(n=>n.startsWith(prefix)).map(n=>parseInt(n.replace(prefix,''),10)).filter(n=>!isNaN(n));
+  const maxSeq=todayNums.length?Math.max(...todayNums):0;
+  const newNum=prefix+String(maxSeq+1).padStart(3,'0');
+  const newQt={...JSON.parse(JSON.stringify(qt)),id:newNum,num:newNum,status:'draft',savedAt:now.toISOString()};
+  let sq=lsGet(SK.quotes)||[];
+  sq.unshift(newQt);lsSet(SK.quotes,sq);
+  showToast('已複製為 '+newNum+' ✓');
+  renderQuoteList();
+  previewQuote(newNum);
+}
+
+async function deleteSelectedQuote(){
+  if(!selectedQuoteId){showToast('請先選擇報價單');return;}
+  const qt=(lsGet(SK.quotes)||[]).find(q=>(q.id||q.num)===selectedQuoteId);
+  if(!confirm(`確定要刪除報價單 ${qt?.num||selectedQuoteId}？此操作無法還原。`))return;
+  let savedQuotes=lsGet(SK.quotes)||[];
+  savedQuotes=savedQuotes.filter(q=>(q.id||q.num)!==selectedQuoteId);lsSet(SK.quotes,savedQuotes);
+  try{await apiPost({action:'deleteQuote',id:selectedQuoteId});}catch(e){}
+  selectedQuoteId=null;ge('quotes-toolbar').style.display='none';
+  ge('q2-paper').style.display='none';ge('q2-empty').style.display='flex';
+  renderQuoteList();showToast('報價單已刪除 ✓');
+}
+
+function openQuote(id){
+  // ★ 立即停止任何待執行的 auto-save，避免舊狀態覆蓋即將載入的報價單
+  clearTimeout(saveTimer);
+
+  const savedQuotes=lsGet(SK.quotes)||[];
+  const qt=savedQuotes.find(q=>(q.id||q.num)===id);
+  if(!qt){showToast('找不到報價單');return;}
+
+  // --- 設定品項 ---
+  items.length=0;(qt.items||[]).forEach(it=>items.push(it));
+
+  // --- 設定 DOM 表單值（順序重要：先設值再觸發渲染）---
+  ge('q-num').value       = qt.num   || '';
+  ge('q-date').value      = qt.date  || '';
+  ge('q-validity').value  = qt.validity || '7';
+  ge('q-tax').value       = qt.tax   ?? '5';
+  ge('q-disc').value      = qt.disc  ?? '0';
+  ge('q-notes').value     = qt.notes || '';
+
+  // ★ status 最重要：確保正確設定，不被 default 'draft' 覆蓋
+  const statusEl = ge('q-status');
+  if(statusEl && qt.status){
+    statusEl.value = qt.status;
+    // 若 option 不存在（例如拼字錯誤），fallback 到 draft
+    if(statusEl.value !== qt.status) statusEl.value = 'draft';
+  }
+
+  // --- 設定公司與業務（salesIdx 強制轉數字）---
+  selectedCompany = qt.companyId
+    ? companies.find(c=>String(c.id)===String(qt.companyId)) || null
+    : null;
+  selectedSalesIdx = (qt.salesIdx!=null && qt.salesIdx!=='')
+    ? Number(qt.salesIdx) : null;
+
+  // --- 設定客戶與承辦人（contactIdx 強制轉數字）---
+  selectedClient = qt.clientId
+    ? clients.find(c=>String(c.id)===String(qt.clientId)) || null
+    : null;
+  selectedContactIdx = (qt.contactIdx!=null && qt.contactIdx!=='')
+    ? Number(qt.contactIdx) : null;
+
+  // --- 渲染 UI ---
+  renderCoSelect();
+  if(selectedCompany) ge('q-co-sel').value = selectedCompany.id;
+  renderSalesPills();
+  if(selectedClient){
+    ge('q-cl-search').value = selectedClient.name;
+    renderClientCard();
+  } else {
+    ge('q-cl-search').value = '';
+    ge('q-cl-info').style.display = 'none';
+  }
+
+  showQuoteEditor();
+  renderItems();
+  renderPreview();
+
+  // ★ 所有 DOM 設定完成後才存快取，確保狀態一致
+  lsSet(SK.quote, qt);
+  setSaveDot('saved', '已載入');
+
+  // ★ 再次 clearTimeout，防止 renderItems/renderPreview 中任何事件觸發 markUnsaved
+  clearTimeout(saveTimer);
+
+  // --- 切至報價單頁 ---
+  document.querySelectorAll('.tabnav button').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tabnav button')[0].classList.add('active');
+  ge('tab-quote').classList.add('active');
+  try{localStorage.setItem('qs_last_tab','quote');}catch(e){}
+  showToast('已開啟報價單 '+qt.num+' ✓');
+}
+
+function newQuote(){
+  items.length=0;items.push({desc:'',qty:1,unit:'',price:0,remark:''});
+  ge('q-num').value='';ge('q-date').value=new Date().toISOString().split('T')[0];
+  ge('q-validity').value='7';ge('q-tax').value='5';ge('q-disc').value='0';
+  ge('q-notes').value='感謝您的詢價，如有疑問請隨時與我們聯繫。';
+  ge('q-status').value='draft';
+  selectedCompany=null;selectedSalesIdx=null;selectedClient=null;selectedContactIdx=null;
+  ge('q-co-sel').value='';ge('q-cl-search').value='';ge('q-cl-info').style.display='none';ge('q-sales-wrap').style.display='none';
+  renderCoSelect();
+  showQuoteEditor();
+  renderItems();renderPreview();
+  setSaveDot('unsaved','新報價單');
+  // 切到報價單頁（但不觸發 renderPreview 重複）
+  document.querySelectorAll('.tabnav button').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tabnav button')[0].classList.add('active');
+  ge('tab-quote').classList.add('active');
+  try{localStorage.setItem('qs_last_tab','quote');}catch(e){}
+}
+
+// ===== BOOT =====
+initApp();
+
+// ===== 列印：body-swap 方式，完全保留螢幕 CSS，logo 100% 正確 =====
+function printQuote(){
+  const paper = document.querySelector('#tab-quote .quote-paper');
+  if(!paper){ showToast('請先開啟報價單'); return; }
+
+  // 1. 建立包裝層，把 quote-paper clone 進去
+  const wrap = document.createElement('div');
+  wrap.className = 'print-paper-wrap';
+
+  // clone：完整複製所有 DOM、class、inline style
+  const clone = paper.cloneNode(true);
+  // 只移除純視覺裝飾
+  clone.style.boxShadow = 'none';
+  clone.style.borderRadius = '0';
+  clone.style.margin = '0';
+  wrap.appendChild(clone);
+
+  // 2. 把 wrap 插入 body，並加上 printing class 讓 @media print 只顯示它
+  document.body.appendChild(wrap);
+  document.body.classList.add('printing');
+
+  // 3. 列印
+  window.print();
+
+  // 4. 列印對話框關閉後還原
+  setTimeout(()=>{
+    document.body.classList.remove('printing');
+    document.body.removeChild(wrap);
+  }, 500);
+}
+</script>
+</body>
+</html>
