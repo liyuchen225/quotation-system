@@ -1716,59 +1716,70 @@ function newQuote(){
 // ===== BOOT =====
 initApp();
 
-// ===== 列印：開新視窗，完整複製 CSS 和 quote-paper，100% 像素一致 =====
+// ===== 列印：開新視窗，寬度固定 = quote-paper 實際渲染寬度 =====
 function printQuote(){
   const paper = document.querySelector('#tab-quote .quote-paper');
   if(!paper){ showToast('請先開啟報價單'); return; }
 
-  // 取得所有 <style> 標籤的 CSS（完整複製）
+  // 取得 paper 在螢幕上的實際渲染寬度（含 padding）
+  const pw = paper.offsetWidth;   // e.g. 680px
+  const ph = paper.offsetHeight;  // 實際高度
+
+  // 取得完整 CSS
   const styles = Array.from(document.querySelectorAll('style'))
     .map(s=>s.innerHTML).join('\n');
 
-  // 取得 quote-paper 的 outerHTML（含所有 class 和 inline style）
+  // 取得 paper HTML
   const paperHTML = paper.outerHTML;
 
-  // 開新視窗，放入完整 CSS + quote-paper，然後列印
-  const win = window.open('','_blank','width=900,height=700');
-  win.document.write(`<!DOCTYPE html>
-<html lang="zh-TW">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<style>
-/* ── 列印用：重設 ── */
-*{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
-html,body{background:white;font-family:system-ui,-apple-system,sans-serif}
-@page{size:A4 portrait;margin:0}
-/* 螢幕：置中顯示 */
-body{display:flex;justify-content:center;align-items:flex-start;padding:20px;background:#e8e8e8}
-/* 列印：全頁 */
-@media print{
-  body{display:block;padding:0;background:white}
-  .quote-paper{box-shadow:none!important;border-radius:0!important;margin:0!important}
-}
-/* ── 完整複製原始 CSS ── */
-${styles}
-</style>
-</head>
-<body>
-${paperHTML}
-<script>
-  // 圖片載入完成後自動列印
-  window.onload = function(){
-    const imgs = document.querySelectorAll('img');
-    let loaded = 0;
-    if(imgs.length === 0){ setTimeout(()=>{ window.print(); window.close(); }, 300); return; }
-    imgs.forEach(img=>{
-      if(img.complete){ loaded++; if(loaded===imgs.length){ setTimeout(()=>{ window.print(); window.close(); },300); } }
-      else{
-        img.onload = img.onerror = function(){ loaded++; if(loaded===imgs.length){ setTimeout(()=>{ window.print(); window.close(); },300); } };
-      }
-    });
-  };
-<\/script>
-</body>
-</html>`);
+  // 新視窗寬度 = paper 實際寬度（確保 CSS 計算 context 完全一致）
+  const win = window.open('','_blank',
+    'width='+pw+',height='+(ph+60)+',scrollbars=yes');
+  if(!win){ showToast('請允許彈出視窗後再試'); return; }
+
+  win.document.write(
+    '<!DOCTYPE html>\n'+
+    '<html lang="zh-TW">\n'+
+    '<head>\n'+
+    '<meta charset="UTF-8">\n'+
+    '<style>\n'+
+    '/* 新視窗 body 寬度 = paper 寬度，確保 CSS 完全一致 */\n'+
+    '*{box-sizing:border-box;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}\n'+
+    'html{margin:0;padding:0;width:'+pw+'px}\n'+
+    'body{margin:0;padding:0;background:white;width:'+pw+'px;font-family:system-ui,-apple-system,sans-serif}\n'+
+    '@page{size:A4 portrait;margin:0}\n'+
+    '@media print{\n'+
+    '  html,body{width:210mm!important}\n'+
+    '  .quote-paper{\n'+
+    '    box-shadow:none!important;border-radius:0!important;\n'+
+    '    width:210mm!important;max-width:210mm!important;\n'+
+    '    margin:0!important;\n'+
+    '  }\n'+
+    '}\n'+
+    styles+'\n'+
+    '/* 列印時移除視覺裝飾 */\n'+
+    '@media print{.quote-paper{box-shadow:none!important;border-radius:0!important;}}\n'+
+    '</style>\n'+
+    '</head>\n'+
+    '<body>\n'+
+    paperHTML+'\n'+
+    '<script>\n'+
+    'window.onload=function(){\n'+
+    '  var imgs=document.querySelectorAll("img");\n'+
+    '  var total=imgs.length,loaded=0;\n'+
+    '  function tryPrint(){setTimeout(function(){window.print();},400);}\n'+
+    '  if(total===0){tryPrint();return;}\n'+
+    '  imgs.forEach(function(img){\n'+
+    '    if(img.complete){loaded++;if(loaded===total)tryPrint();}\n'+
+    '    else{\n'+
+    '      img.onload=function(){loaded++;if(loaded===total)tryPrint();};\n'+
+    '      img.onerror=function(){loaded++;if(loaded===total)tryPrint();};\n'+
+    '    }\n'+
+    '  });\n'+
+    '};\n'+
+    '<\/script>\n'+
+    '</body></html>'
+  );
   win.document.close();
 }
 </script>
