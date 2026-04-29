@@ -170,7 +170,8 @@ table.qi td.r{text-align:right}
 .status-select-wrap select{font-size:12px;padding:4px 8px;border:1px solid #ccc;border-radius:var(--radius);background:var(--bg);color:var(--text)}
 
 @media print{
-  @page{size:A4 portrait;margin:0}
+  /* @page margin 控制邊距，跨平台（桌機+iOS）最穩 */
+  @page{size:A4 portrait;margin:11mm 13mm}
   *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
 
   body>*:not(#print-target-el){display:none!important}
@@ -178,26 +179,22 @@ table.qi td.r{text-align:right}
   #print-target-el{
     display:block!important;
     position:fixed!important;
-    top:0!important;left:0!important;
-    width:210mm!important;
-    min-height:297mm!important;
+    top:0!important;left:0!important;right:0!important;
+    width:100vw!important;
+    min-height:100vh!important;
     background:white!important;
     z-index:99999!important;
     margin:0!important;padding:0!important;
+    box-sizing:border-box!important;
   }
 
-  /* quote-paper：padding 與螢幕等比例換算
-     螢幕：max-width:680px, padding:36px 42px
-     36px/680px = 5.3% → 210mm × 5.3% ≈ 11mm
-     42px/680px = 6.2% → 210mm × 6.2% ≈ 13mm
-  */
   #print-target-el .quote-paper{
     box-shadow:none!important;border-radius:0!important;
-    width:210mm!important;max-width:210mm!important;
+    /* width 100%，邊距由 @page margin 控制 */
+    width:100%!important;max-width:100%!important;
     margin:0!important;
-    padding:11mm 13mm!important;
+    padding:0!important;
     box-sizing:border-box!important;
-    /* 字體依螢幕比例：13.9px / 680px × (210mm in px≈794px) = 16.2px → 但用 mm 更穩 */
     font-size:4.2mm!important;
     background:white!important;color:#1a1a1a!important;
   }
@@ -218,7 +215,7 @@ table.qi td.r{text-align:right}
   }
   #print-target-el .qp-meta{text-align:right!important;flex-shrink:0!important;min-width:42mm!important;align-self:flex-start!important;}
   #print-target-el .qp-num{font-size:3.8mm!important;margin-top:1mm!important;}
-  #print-target-el .qp-co-name{font-size:5.7mm!important;font-weight:500!important;}
+  #print-target-el .qp-co-name{font-size:4.2mm!important;font-weight:600!important;}
   #print-target-el .qp-co-sub{font-size:3.5mm!important;line-height:1.5!important;margin-top:1mm!important;text-align:right!important;}
 
   #print-target-el .divider{height:0.3mm!important;background:#bbb!important;margin:3mm 0!important;}
@@ -229,6 +226,16 @@ table.qi td.r{text-align:right}
   }
   #print-target-el .qp-block h4{font-size:3.2mm!important;margin-bottom:2mm!important;}
   #print-target-el .qp-block p{font-size:3.5mm!important;line-height:1.5!important;}
+
+  /* ── 覆蓋手機版 @media(max-width:768px) 的規則 ── */
+  #print-target-el .qp-header{flex-wrap:nowrap!important;}
+  #print-target-el .qp-title{position:absolute!important;order:0!important;width:auto!important;margin-bottom:0!important;}
+  #print-target-el .qp-logo,
+  #print-target-el .qp-logo-placeholder{height:16mm!important;}
+  #print-target-el .qp-bottom-row{flex-direction:row!important;}
+  #print-target-el table.qi{font-size:3.8mm!important;}
+  #print-target-el table.qi th,
+  #print-target-el table.qi td{padding:2mm 2.5mm!important;}
 
   #print-target-el table.qi{width:100%!important;border-collapse:collapse!important;margin-bottom:4mm!important;}
   #print-target-el table.qi thead tr{background:#185FA5!important;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
@@ -314,15 +321,26 @@ table.qi td.r{text-align:right}
   .preview-area{padding:8px;background:#eee;overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%}
   .quote-paper{padding:12px 14px;font-size:11px;width:100%;max-width:100%;box-sizing:border-box;min-width:0}
   /* quote paper 內部防溢出 */
-  .qp-header{flex-wrap:wrap;gap:6px}
-  .qp-title{position:static;text-align:center;width:100%;order:-1;margin-bottom:4px}
-  .qp-logo,.qp-logo-placeholder{height:40px}
-  .qp-meta{min-width:0;flex:1}
+  .qp-header{flex-wrap:wrap;gap:4px;position:relative}
+  .qp-title{position:static!important;text-align:center;width:100%;order:-1;margin-bottom:6px;font-size:15px!important;font-weight:500}
+  .qp-logo,.qp-logo-placeholder{height:36px;order:0;flex-shrink:0}
+  .qp-logo img{height:36px;max-width:120px;width:auto;object-fit:contain}
+  .qp-meta{min-width:0;flex:1;text-align:right;order:1;align-self:flex-start}
+  .qp-num{font-size:10px!important}
+  .qp-co-name{font-size:13px!important}
+  .qp-co-sub{font-size:10px!important;word-break:break-all}
   .qp-info{grid-template-columns:1fr}
+  .qp-block p{font-size:11px}
+  .qp-block h4{font-size:10px}
   .qp-bottom-row{flex-direction:column;gap:10px}
   .qp-totals table{min-width:0;width:100%}
+  .qp-totals td{font-size:11px}
+  .qp-totals .grand td{font-size:13px}
   table.qi{font-size:10px}
   table.qi th,table.qi td{padding:4px 3px}
+  .qp-notes p{font-size:11px}
+  .qp-sign-box{font-size:10px}
+  .qp-footer{font-size:10px}
   /* ── 報價單管理頁 ── */
   #tab-quotes>div{grid-template-columns:1fr!important;min-height:auto}
   #tab-quotes>div>div:first-child{border-right:none;border-bottom:1px solid var(--border)}
