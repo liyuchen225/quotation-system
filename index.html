@@ -1839,7 +1839,7 @@ function printQuote(){
   const paper = document.querySelector('#tab-quote .quote-paper');
   if(!paper){ showToast('請先開啟報價單'); return; }
 
-  // 建立 print-target 容器，把 paper clone 進去放在 body 頂層
+  // 建立 print-target 容器
   let pt = document.getElementById('print-target-el');
   if(pt) document.body.removeChild(pt);
   pt = document.createElement('div');
@@ -1847,13 +1847,33 @@ function printQuote(){
   pt.className = 'print-target';
 
   const clone = paper.cloneNode(true);
+
+  // ★ 直接用 inline style 強制設定 qp-bottom-row 的排列
+  // 這樣不受任何 CSS 層疊影響
+  const bottomRow = clone.querySelector('.qp-bottom-row');
+  if(bottomRow){
+    bottomRow.style.cssText = 'display:flex!important;flex-direction:row;justify-content:space-between;align-items:flex-end;gap:16px;width:100%';
+    const bank = bottomRow.querySelector('.qp-bank');
+    if(bank){
+      bank.style.cssText = 'flex:1;min-width:0;max-width:55%';
+    }
+    const totals = bottomRow.querySelector('.qp-totals');
+    if(totals){
+      totals.style.cssText = 'flex-shrink:0;min-width:180px';
+    }
+  }
+
+  // ★ 修正 bank-block 的 color（避免 inline style color:#ccc 顯示灰色）
+  const bankBlock = clone.querySelector('#p-bank-block, #q2-bank-block');
+  if(bankBlock && bankBlock.style.color === 'rgb(204, 204, 204)'){
+    bankBlock.style.color = '#444';
+  }
+
   pt.appendChild(clone);
   document.body.appendChild(pt);
 
-  // 列印
   window.print();
 
-  // 列印對話框結束後移除
   setTimeout(()=>{
     if(pt.parentNode) pt.parentNode.removeChild(pt);
   }, 1000);
