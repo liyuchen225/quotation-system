@@ -1716,71 +1716,65 @@ function newQuote(){
 // ===== BOOT =====
 initApp();
 
-// ===== 列印：開新視窗，寬度固定 = quote-paper 實際渲染寬度 =====
+// ===== 列印：Blob URL 新視窗，寬度完全吻合螢幕 =====
 function printQuote(){
   const paper = document.querySelector('#tab-quote .quote-paper');
   if(!paper){ showToast('請先開啟報價單'); return; }
 
-  // 取得 paper 在螢幕上的實際渲染寬度（含 padding）
-  const pw = paper.offsetWidth;   // e.g. 680px
-  const ph = paper.offsetHeight;  // 實際高度
+  // 1. 取得螢幕上 paper 的實際渲染寬度
+  const pw = paper.offsetWidth;
 
-  // 取得完整 CSS
+  // 2. 複製所有 <style> CSS
   const styles = Array.from(document.querySelectorAll('style'))
-    .map(s=>s.innerHTML).join('\n');
+    .map(s => s.textContent).join('\n');
 
-  // 取得 paper HTML
+  // 3. 複製 paper HTML
   const paperHTML = paper.outerHTML;
 
-  // 新視窗寬度 = paper 實際寬度（確保 CSS 計算 context 完全一致）
-  const win = window.open('','_blank',
-    'width='+pw+',height='+(ph+60)+',scrollbars=yes');
-  if(!win){ showToast('請允許彈出視窗後再試'); return; }
+  // 4. 組合完整 HTML
+  const html = [
+    '<!DOCTYPE html>',
+    '<html lang="zh-TW">',
+    '<head>',
+    '<meta charset="UTF-8">',
+    '<style>',
+    '*, *::before, *::after { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }',
+    'html, body { margin: 0; padding: 0; background: white; width: ' + pw + 'px; font-family: system-ui, -apple-system, sans-serif; }',
+    '@page { size: A4 portrait; margin: 0; }',
+    '@media print {',
+    '  html, body { width: 210mm !important; }',
+    '  .quote-paper { box-shadow: none !important; border-radius: 0 !important; width: 210mm !important; max-width: 210mm !important; margin: 0 !important; padding: 12mm 14mm !important; }',
+    '}',
+    styles,
+    '</style>',
+    '</head>',
+    '<body>',
+    paperHTML,
+    '<script>',
+    '(function(){',
+    '  var imgs = Array.from(document.querySelectorAll("img"));',
+    '  var remaining = imgs.filter(function(i){ return !i.complete; }).length;',
+    '  function doPrint(){ window.focus(); window.print(); }',
+    '  if(remaining === 0){ setTimeout(doPrint, 500); return; }',
+    '  imgs.forEach(function(img){',
+    '    if(!img.complete){',
+    '      img.addEventListener("load",  function(){ remaining--; if(remaining<=0) setTimeout(doPrint,500); });',
+    '      img.addEventListener("error", function(){ remaining--; if(remaining<=0) setTimeout(doPrint,500); });',
+    '    }',
+    '  });',
+    '})();',
+    '<\/script>',
+    '</body>',
+    '</html>'
+  ].join('\n');
 
-  win.document.write(
-    '<!DOCTYPE html>\n'+
-    '<html lang="zh-TW">\n'+
-    '<head>\n'+
-    '<meta charset="UTF-8">\n'+
-    '<style>\n'+
-    '/* 新視窗 body 寬度 = paper 寬度，確保 CSS 完全一致 */\n'+
-    '*{box-sizing:border-box;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}\n'+
-    'html{margin:0;padding:0;width:'+pw+'px}\n'+
-    'body{margin:0;padding:0;background:white;width:'+pw+'px;font-family:system-ui,-apple-system,sans-serif}\n'+
-    '@page{size:A4 portrait;margin:0}\n'+
-    '@media print{\n'+
-    '  html,body{width:210mm!important}\n'+
-    '  .quote-paper{\n'+
-    '    box-shadow:none!important;border-radius:0!important;\n'+
-    '    width:210mm!important;max-width:210mm!important;\n'+
-    '    margin:0!important;\n'+
-    '  }\n'+
-    '}\n'+
-    styles+'\n'+
-    '/* 列印時移除視覺裝飾 */\n'+
-    '@media print{.quote-paper{box-shadow:none!important;border-radius:0!important;}}\n'+
-    '</style>\n'+
-    '</head>\n'+
-    '<body>\n'+
-    paperHTML+'\n'+
-    '<script>\n'+
-    'window.onload=function(){\n'+
-    '  var imgs=document.querySelectorAll("img");\n'+
-    '  var total=imgs.length,loaded=0;\n'+
-    '  function tryPrint(){setTimeout(function(){window.print();},400);}\n'+
-    '  if(total===0){tryPrint();return;}\n'+
-    '  imgs.forEach(function(img){\n'+
-    '    if(img.complete){loaded++;if(loaded===total)tryPrint();}\n'+
-    '    else{\n'+
-    '      img.onload=function(){loaded++;if(loaded===total)tryPrint();};\n'+
-    '      img.onerror=function(){loaded++;if(loaded===total)tryPrint();};\n'+
-    '    }\n'+
-    '  });\n'+
-    '};\n'+
-    '<\/script>\n'+
-    '</body></html>'
-  );
-  win.document.close();
+  // 5. 建立 Blob URL 並開啟
+  const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+  const url  = URL.createObjectURL(blob);
+  const win  = window.open(url, '_blank');
+  if(!win){ showToast('⚠️ 請允許彈出視窗後再試'); }
+  // Blob URL 在視窗關閉後釋放
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
 }
 </script>
 </body>
