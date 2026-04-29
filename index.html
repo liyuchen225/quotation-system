@@ -172,33 +172,45 @@ table.qi td.r{text-align:right}
 @media print{
   @page{size:A4 portrait;margin:0}
   *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
-  /* 列印時：全部隱藏，只顯示 .print-target */
-  body>*{visibility:hidden!important;position:static!important;}
-  .print-target{
-    visibility:visible!important;
+
+  /* 隱藏所有 body 直接子元素，但不影響 position */
+  body>*:not(#print-target-el){display:none!important}
+
+  /* print-target：fixed 填滿 A4 */
+  #print-target-el{
+    display:block!important;
     position:fixed!important;
     top:0!important;left:0!important;
     width:210mm!important;
+    min-height:100%!important;
     background:white!important;
     z-index:99999!important;
+    margin:0!important;
+    padding:0!important;
   }
-  .print-target *{visibility:visible!important}
-  .print-target .quote-paper{
+
+  /* quote-paper 內部 */
+  #print-target-el .quote-paper{
     box-shadow:none!important;border-radius:0!important;
     width:210mm!important;max-width:210mm!important;
     margin:0!important;padding:12mm 14mm!important;
+    font-size:13.9px!important;
+    background:white!important;color:#1a1a1a!important;
   }
-  .print-target .qp-header{display:flex!important;justify-content:space-between!important;align-items:center!important;position:relative!important;}
-  .print-target .qp-title{position:absolute!important;left:0!important;right:0!important;text-align:center!important;pointer-events:none!important;}
-  .print-target .qp-info{display:grid!important;grid-template-columns:1fr 1fr!important;gap:18px!important;}
-  .print-target .qp-bottom-row{display:flex!important;justify-content:space-between!important;align-items:flex-end!important;gap:20px!important;}
-  .print-target .qp-signer{display:flex!important;gap:16px!important;}
-  .print-target .qp-footer{display:flex!important;justify-content:space-between!important;}
-  .print-target table.qi{width:100%!important;border-collapse:collapse!important;}
-  .print-target .qp-bank{flex:1!important;min-width:0!important;}
-  .print-target .qp-totals{flex-shrink:0!important;}
-  .print-target .qp-totals table{min-width:200px!important;}
-  table.qi thead tr,.qp-notes{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
+  #print-target-el .qp-header{display:flex!important;justify-content:space-between!important;align-items:center!important;position:relative!important;}
+  #print-target-el .qp-title{position:absolute!important;left:0!important;right:0!important;text-align:center!important;pointer-events:none!important;}
+  #print-target-el .qp-info{display:grid!important;grid-template-columns:1fr 1fr!important;gap:18px!important;}
+  #print-target-el .qp-bottom-row{display:flex!important;justify-content:space-between!important;align-items:flex-end!important;gap:20px!important;}
+  #print-target-el .qp-signer{display:flex!important;gap:16px!important;}
+  #print-target-el .qp-footer{display:flex!important;justify-content:space-between!important;}
+  #print-target-el .qp-bank{flex:1!important;min-width:0!important;}
+  #print-target-el .qp-totals{flex-shrink:0!important;}
+  #print-target-el .qp-totals table{min-width:200px!important;}
+  #print-target-el .qp-logo{height:60px!important;max-width:220px!important;display:flex!important;}
+  #print-target-el .qp-logo img{height:60px!important;max-width:220px!important;width:auto!important;object-fit:contain!important;}
+  #print-target-el table.qi{width:100%!important;border-collapse:collapse!important;}
+  #print-target-el table.qi thead tr{background:#185FA5!important;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
+  #print-target-el .qp-notes{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
 }
 
 /* iPad */
