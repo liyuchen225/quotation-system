@@ -153,7 +153,7 @@ table.qi td.r{text-align:right}
 .quote-list-item.selected{background:var(--blue-lt)}
 .quote-list-item .qli-num{font-size:13px;font-weight:500;color:var(--text)}
 .quote-list-item .qli-cl{font-size:11px;color:var(--text3);margin-top:2px}
-.quote-list-item .qli-date{font-size:11px;color:var(--text3)}
+.quote-list-item .qli-date{font-size:11px;color:var(--text3);white-space:nowrap;flex-shrink:0}
 .qli-tag{display:inline-block;font-size:10px;padding:1px 7px;border-radius:10px;margin-left:4px;font-weight:500}
 .qli-tag-draft{background:#f1efe8;color:#444}
 .qli-tag-sent{background:var(--blue-lt);color:var(--blue-dk)}
@@ -319,28 +319,46 @@ table.qi td.r{text-align:right}
   .item-row input{font-size:11px;padding:3px 3px}
   /* 預覽區：全寬、可橫向捲動 */
   .preview-area{padding:8px;background:#eee;overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%}
-  .quote-paper{padding:12px 14px;font-size:11px;width:100%;max-width:100%;box-sizing:border-box;min-width:0}
-  /* quote paper 內部防溢出 */
-  .qp-header{flex-wrap:wrap;gap:4px;position:relative}
-  .qp-title{position:static!important;text-align:center;width:100%;order:-1;margin-bottom:6px;font-size:15px!important;font-weight:500}
-  .qp-logo,.qp-logo-placeholder{height:36px;order:0;flex-shrink:0}
-  .qp-logo img{height:36px;max-width:120px;width:auto;object-fit:contain}
-  .qp-meta{min-width:0;flex:1;text-align:right;order:1;align-self:flex-start}
-  .qp-num{font-size:10px!important}
-  .qp-co-name{font-size:13px!important}
-  .qp-co-sub{font-size:10px!important;word-break:break-all}
-  .qp-info{grid-template-columns:1fr}
-  .qp-block p{font-size:11px}
-  .qp-block h4{font-size:10px}
-  .qp-bottom-row{flex-direction:column;gap:10px}
+  /* 預覽紙張：縮小字體讓內容能並排 */
+  .quote-paper{padding:10px 12px;font-size:10px;width:100%;max-width:100%;box-sizing:border-box;min-width:0}
+
+  /* header：標題獨立一行，logo+meta 左右排 */
+  .qp-header{flex-wrap:wrap;gap:3px;position:relative}
+  .qp-title{position:static!important;text-align:center;width:100%;order:-1;margin-bottom:4px;font-size:14px!important;font-weight:500}
+  .qp-logo,.qp-logo-placeholder{height:30px;order:0;flex-shrink:0}
+  .qp-logo img{height:30px;max-width:100px;width:auto;object-fit:contain}
+  .qp-meta{min-width:0;flex:1;text-align:right;order:1;align-self:flex-start;font-size:9px}
+  .qp-num{font-size:9px!important}
+
+  /* 報價對象+出單公司：手機維持左右並排（縮小字體） */
+  .qp-info{display:grid!important;grid-template-columns:1fr 1fr!important;gap:8px;margin-bottom:6px}
+  .qp-block h4{font-size:8.5px;margin-bottom:3px}
+  .qp-block p{font-size:9.5px;line-height:1.4}
+  .qp-co-name{font-size:11px!important;font-weight:600}
+  .qp-co-sub{font-size:9px!important;line-height:1.4;word-break:break-word}
+
+  /* 品項表格：固定各欄寬，品項說明不換行用 text-overflow */
+  table.qi{font-size:9px;table-layout:fixed;width:100%}
+  table.qi th,table.qi td{padding:3px 2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  table.qi th:nth-child(1),table.qi td:nth-child(1){width:18px} /* # */
+  table.qi th:nth-child(2),table.qi td:nth-child(2){width:auto;white-space:normal;word-break:break-word} /* 品項說明 */
+  table.qi th:nth-child(3),table.qi td:nth-child(3){width:26px;text-align:right} /* 數量 */
+  table.qi th:nth-child(4),table.qi td:nth-child(4){width:22px;text-align:right} /* 單位 */
+  table.qi th:nth-child(5),table.qi td:nth-child(5){width:54px;text-align:right} /* 單價 */
+  table.qi th:nth-child(6),table.qi td:nth-child(6){width:54px;text-align:right} /* 小計 */
+
+  /* 匯款+金額：上下排（手機空間不足並排） */
+  .qp-bottom-row{flex-direction:column!important;gap:8px}
+  .qp-bank h4{font-size:9px;margin-bottom:3px}
+  .qp-bank p{font-size:9.5px;line-height:1.4}
   .qp-totals table{min-width:0;width:100%}
-  .qp-totals td{font-size:11px}
-  .qp-totals .grand td{font-size:13px}
-  table.qi{font-size:10px}
-  table.qi th,table.qi td{padding:4px 3px}
-  .qp-notes p{font-size:11px}
-  .qp-sign-box{font-size:10px}
-  .qp-footer{font-size:10px}
+  .qp-totals td{font-size:10px;padding:3px 0}
+  .qp-totals .grand td{font-size:12px}
+
+  /* 備註、簽名、頁尾 */
+  .qp-notes p{font-size:10px}
+  .qp-sign-box{font-size:9px;min-height:20px}
+  .qp-footer{font-size:9px}
   /* ── 報價單管理頁 ── */
   #tab-quotes>div{grid-template-columns:1fr!important;min-height:auto}
   #tab-quotes>div>div:first-child{border-right:none;border-bottom:1px solid var(--border)}
@@ -1717,8 +1735,8 @@ function renderQuoteList(search=''){
     const clName=getClientName(qt.clientId);const coName=getCompanyName(qt.companyId);
     const date=qt.date||qt.savedAt?.slice(0,10)||'';const qid=qt.id||qt.num;const isSelected=qid===selectedQuoteId;
     return`<div class="quote-list-item${isSelected?' selected':''}" data-qid="${qid}" onclick="previewQuote('${qid}')">
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <div class="qli-num">${qt.num||qt.id}${statusTag(qt.status||'draft')}</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:6px">
+        <div class="qli-num" style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${qt.num||qt.id}${statusTag(qt.status||'draft')}</div>
         <div class="qli-date">${date}</div>
       </div>
       <div class="qli-cl">${coName?coName+'　':''}${clName||'（無客戶）'}</div>
