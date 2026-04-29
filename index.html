@@ -173,7 +173,7 @@ table.qi td.r{text-align:right}
   @page{size:A4 portrait;margin:12mm 15mm}
   *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
 
-  /* ── 隱藏所有 UI 殼層，只保留 quote-paper 的父層鏈 ── */
+  /* ── 隱藏所有 UI 殼層 ── */
   .tabnav,
   #quote-save-bar,
   .quote-sidebar,
@@ -182,49 +182,65 @@ table.qi td.r{text-align:right}
   #quote-empty-state,
   #tab-quotes,
   #tab-clients,
-  #tab-companies,
-  .qp-footer           /* 選擇性：可保留或移除頁尾 */
+  #tab-companies
   { display:none!important }
 
-  /* ── 父層容器：重設為無干擾的 block ── */
+  /* ── 頁面根容器 ── */
   html,body{
     margin:0!important;padding:0!important;
     background:white!important;width:100%!important;
+    height:auto!important;
   }
   .app{
     box-shadow:none!important;border:none!important;
     border-radius:0!important;max-width:100%!important;
     margin:0!important;padding:0!important;
+    overflow:visible!important;
   }
-  #tab-quote{ display:block!important;padding:0!important; }
-  #quote-editor{
-    display:block!important;        /* 覆蓋 grid */
-    border:none!important;border-radius:0!important;min-height:0!important;
-  }
-  .quote-main{ display:block!important; }
+  #tab-quote{display:block!important;padding:0!important;}
 
-  /* ── preview-area：移除背景和 padding，讓 paper 自然呈現 ── */
+  /* ── quote-editor：從 grid 改為 block，sidebar 已隱藏 ── */
+  #quote-editor{
+    display:block!important;
+    border:none!important;border-radius:0!important;
+    min-height:0!important;overflow:visible!important;
+  }
+
+  /* ── quote-main：從 flex column 改為 block ── */
+  .quote-main{
+    display:block!important;
+    background:white!important;
+    overflow:visible!important;
+  }
+
+  /* ── preview-area：移除灰色背景和 padding ── */
   .preview-area{
     display:block!important;
     background:white!important;
     padding:0!important;margin:0!important;
     overflow:visible!important;
-    flex:none!important;
+    height:auto!important;
   }
 
-  /* ── quote-paper：只移除視覺裝飾，所有其他樣式完整保留 ── */
+  /* ── quote-paper：只移除視覺裝飾，完整保留所有尺寸和樣式 ── */
   .quote-paper{
     box-shadow:none!important;
     border-radius:0!important;
     margin:0 auto!important;
-    /* font-size / padding / max-width / colors 全部保留原樣 */
+    /* font-size、padding、max-width、color 完全保留 */
   }
+
+  /* ── quote-paper 內部佈局：強制保留 grid/flex ── */
+  .qp-header{display:flex!important;}
+  .qp-info{display:grid!important;grid-template-columns:1fr 1fr!important;}
+  .qp-bottom-row{display:flex!important;}
+  .qp-signer{display:flex!important;}
+  .qp-footer{display:flex!important;}
 
   /* ── 確保彩色背景印出 ── */
   table.qi thead tr,
-  .qp-notes,
-  .qp-logo img
-  { -webkit-print-color-adjust:exact!important;print-color-adjust:exact!important; }
+  .qp-notes
+  {-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
 }
 
 /* iPad */
