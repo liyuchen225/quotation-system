@@ -172,9 +172,33 @@ table.qi td.r{text-align:right}
 @media print{
   @page{size:A4 portrait;margin:0}
   *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
-  body>*{visibility:hidden!important}
-  #print-only{visibility:visible!important;position:fixed!important;top:0!important;left:0!important;width:210mm!important;background:white!important;}
-  #print-only *{visibility:visible!important}
+  /* 列印時：全部隱藏，只顯示 .print-target */
+  body>*{visibility:hidden!important;position:static!important;}
+  .print-target{
+    visibility:visible!important;
+    position:fixed!important;
+    top:0!important;left:0!important;
+    width:210mm!important;
+    background:white!important;
+    z-index:99999!important;
+  }
+  .print-target *{visibility:visible!important}
+  .print-target .quote-paper{
+    box-shadow:none!important;border-radius:0!important;
+    width:210mm!important;max-width:210mm!important;
+    margin:0!important;padding:12mm 14mm!important;
+  }
+  .print-target .qp-header{display:flex!important;justify-content:space-between!important;align-items:center!important;position:relative!important;}
+  .print-target .qp-title{position:absolute!important;left:0!important;right:0!important;text-align:center!important;pointer-events:none!important;}
+  .print-target .qp-info{display:grid!important;grid-template-columns:1fr 1fr!important;gap:18px!important;}
+  .print-target .qp-bottom-row{display:flex!important;justify-content:space-between!important;align-items:flex-end!important;gap:20px!important;}
+  .print-target .qp-signer{display:flex!important;gap:16px!important;}
+  .print-target .qp-footer{display:flex!important;justify-content:space-between!important;}
+  .print-target table.qi{width:100%!important;border-collapse:collapse!important;}
+  .print-target .qp-bank{flex:1!important;min-width:0!important;}
+  .print-target .qp-totals{flex-shrink:0!important;}
+  .print-target .qp-totals table{min-width:200px!important;}
+  table.qi thead tr,.qp-notes{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
 }
 
 /* iPad */
@@ -621,6 +645,15 @@ async function initApp(){
   // ★ 立即 restore（API 之前），使用者看不到閃爍
   restoreUIState();
   setSaveDot('saving','連線中…');
+  // ★ 連線提示：告知使用者正在同步（不是當機）
+  const lastTab = localStorage.getItem('qs_last_tab')||'quote';
+  if(lastTab==='quotes'){
+    // 已在 restoreUIState 用快取渲染，這裡只加提示
+    const el=ge('quotes-list');
+    if(el&&!el.innerHTML.trim()){
+      el.innerHTML='<div style="padding:16px;font-size:12px;color:var(--text3)">⏳ 雲端同步中…</div>';
+    }
+  }
   const cachedCos=lsGet(SK.companies)||[];
   const cachedCls=lsGet(SK.clients)||[];
 
@@ -694,42 +727,8 @@ async function initApp(){
     setSaveDot('saved','');
   }
 
-  try{
-    const qResult=await apiGet({action:'getQuotes'});
-    if(qResult.status==='ok'&&qResult.quotes?.length){
-      const localQ=lsGet(SK.quotes)||[];
-      // 本機資料建 Map（num 為主鍵）
-      const localMap=new Map();
-      localQ.forEach(lq=>{const key=lq.num||lq.id;if(key)localMap.set(key,lq);});
-
-      // 雲端資料：只有本機完全沒有的才加入，其餘以本機為準
-      // 原因：GAS Sheets 回傳的欄位可能不完整（status/salesIdx/contactIdx 可能空值）
-      // 本機的 savedAt 是儲存當下的精確時間，以此為真實來源
-      qResult.quotes.forEach(rq=>{
-        const key=rq.num||rq.id;if(!key)return;
-        const local=localMap.get(key);
-        if(!local){
-          // 本機沒有這筆 → 直接加入（新裝置同步）
-          localMap.set(key,rq);
-        } else {
-          // 本機已有 → 以本機為主，用雲端補本機缺漏的欄位（不覆蓋已有值）
-          const merged={...rq,...local}; // local 優先覆蓋 rq
-          // 關鍵欄位：若本機有值就絕對保留
-          if(local.status)merged.status=local.status;
-          if(local.salesIdx!=null&&local.salesIdx!=='')merged.salesIdx=local.salesIdx;
-          if(local.contactIdx!=null&&local.contactIdx!=='')merged.contactIdx=local.contactIdx;
-          if(local.companyId)merged.companyId=local.companyId;
-          if(local.clientId)merged.clientId=local.clientId;
-          if(local.items?.length)merged.items=local.items;
-          localMap.set(key,merged);
-        }
-      });
-
-      const merged=Array.from(localMap.values());
-      merged.sort((a,b)=>new Date(b.savedAt||b.date||0)-new Date(a.savedAt||a.date||0));
-      lsSet(SK.quotes,merged);
-    }
-  }catch(e){}
+  // 背景同步報價單（不阻塞 UI）
+  syncQuotesFromCloud();
 
   // 資料已載入，執行 pending 的畫面恢復
   try{
@@ -757,6 +756,44 @@ async function initApp(){
       }
     }
     // quote tab 的 renderItems/renderPreview 已在上方 q&&q.num 判斷中處理
+  }catch(e){}
+}
+
+// ===== 背景同步報價單（不阻塞 UI）=====
+async function syncQuotesFromCloud(){
+  try{
+    const qResult=await apiGet({action:'getQuotes'});
+    if(qResult.status==='ok'&&qResult.quotes?.length){
+      const localQ=lsGet(SK.quotes)||[];
+      const localMap=new Map();
+      localQ.forEach(lq=>{const key=lq.num||lq.id;if(key)localMap.set(key,lq);});
+      qResult.quotes.forEach(rq=>{
+        const key=rq.num||rq.id;if(!key)return;
+        const local=localMap.get(key);
+        if(!local){
+          localMap.set(key,rq);
+        }else{
+          const merged={...rq,...local};
+          if(local.status)merged.status=local.status;
+          if(local.salesIdx!=null&&local.salesIdx!=='')merged.salesIdx=local.salesIdx;
+          if(local.contactIdx!=null&&local.contactIdx!=='')merged.contactIdx=local.contactIdx;
+          if(local.companyId)merged.companyId=local.companyId;
+          if(local.clientId)merged.clientId=local.clientId;
+          if(local.items?.length)merged.items=local.items;
+          localMap.set(key,merged);
+        }
+      });
+      const merged=Array.from(localMap.values());
+      merged.sort((a,b)=>new Date(b.savedAt||b.date||0)-new Date(a.savedAt||a.date||0));
+      lsSet(SK.quotes,merged);
+      // 若目前在 quotes tab，刷新列表
+      const lastTab=localStorage.getItem('qs_last_tab')||'quote';
+      if(lastTab==='quotes'){
+        renderQuoteList();
+        const lastQid=localStorage.getItem('qs_last_qid');
+        if(lastQid) previewQuote(lastQid);
+      }
+    }
   }catch(e){}
 }
 
@@ -1716,65 +1753,29 @@ function newQuote(){
 // ===== BOOT =====
 initApp();
 
-// ===== 列印：Blob URL 新視窗，寬度完全吻合螢幕 =====
+// ===== 列印：visibility 方式，不開新視窗，最穩定 =====
 function printQuote(){
   const paper = document.querySelector('#tab-quote .quote-paper');
   if(!paper){ showToast('請先開啟報價單'); return; }
 
-  // 1. 取得螢幕上 paper 的實際渲染寬度
-  const pw = paper.offsetWidth;
+  // 建立 print-target 容器，把 paper clone 進去放在 body 頂層
+  let pt = document.getElementById('print-target-el');
+  if(pt) document.body.removeChild(pt);
+  pt = document.createElement('div');
+  pt.id = 'print-target-el';
+  pt.className = 'print-target';
 
-  // 2. 複製所有 <style> CSS
-  const styles = Array.from(document.querySelectorAll('style'))
-    .map(s => s.textContent).join('\n');
+  const clone = paper.cloneNode(true);
+  pt.appendChild(clone);
+  document.body.appendChild(pt);
 
-  // 3. 複製 paper HTML
-  const paperHTML = paper.outerHTML;
+  // 列印
+  window.print();
 
-  // 4. 組合完整 HTML
-  const html = [
-    '<!DOCTYPE html>',
-    '<html lang="zh-TW">',
-    '<head>',
-    '<meta charset="UTF-8">',
-    '<style>',
-    '*, *::before, *::after { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }',
-    'html, body { margin: 0; padding: 0; background: white; width: ' + pw + 'px; font-family: system-ui, -apple-system, sans-serif; }',
-    '@page { size: A4 portrait; margin: 0; }',
-    '@media print {',
-    '  html, body { width: 210mm !important; }',
-    '  .quote-paper { box-shadow: none !important; border-radius: 0 !important; width: 210mm !important; max-width: 210mm !important; margin: 0 !important; padding: 12mm 14mm !important; }',
-    '}',
-    styles,
-    '</style>',
-    '</head>',
-    '<body>',
-    paperHTML,
-    '<script>',
-    '(function(){',
-    '  var imgs = Array.from(document.querySelectorAll("img"));',
-    '  var remaining = imgs.filter(function(i){ return !i.complete; }).length;',
-    '  function doPrint(){ window.focus(); window.print(); }',
-    '  if(remaining === 0){ setTimeout(doPrint, 500); return; }',
-    '  imgs.forEach(function(img){',
-    '    if(!img.complete){',
-    '      img.addEventListener("load",  function(){ remaining--; if(remaining<=0) setTimeout(doPrint,500); });',
-    '      img.addEventListener("error", function(){ remaining--; if(remaining<=0) setTimeout(doPrint,500); });',
-    '    }',
-    '  });',
-    '})();',
-    '<\/script>',
-    '</body>',
-    '</html>'
-  ].join('\n');
-
-  // 5. 建立 Blob URL 並開啟
-  const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
-  const url  = URL.createObjectURL(blob);
-  const win  = window.open(url, '_blank');
-  if(!win){ showToast('⚠️ 請允許彈出視窗後再試'); }
-  // Blob URL 在視窗關閉後釋放
-  setTimeout(() => URL.revokeObjectURL(url), 60000);
+  // 列印對話框結束後移除
+  setTimeout(()=>{
+    if(pt.parentNode) pt.parentNode.removeChild(pt);
+  }, 1000);
 }
 </script>
 </body>
