@@ -237,14 +237,28 @@ table.qi td.r{text-align:right}
 
   #print-target-el .qp-bottom-row{
     display:flex!important;
+    flex-direction:row!important;
     justify-content:space-between!important;
     align-items:flex-end!important;
     gap:5mm!important;margin-top:1mm!important;
+    width:100%!important;
   }
-  #print-target-el .qp-bank{flex:1!important;min-width:0!important;}
+  #print-target-el .qp-bank,
+  #print-target-el .qp-block.qp-bank{
+    flex:1 1 auto!important;
+    min-width:0!important;
+    max-width:55%!important;
+    order:1!important;
+  }
   #print-target-el .qp-bank h4{font-size:3.2mm!important;margin-bottom:2mm!important;}
-  #print-target-el .qp-bank p{font-size:3.5mm!important;line-height:1.6!important;}
-  #print-target-el .qp-totals{flex-shrink:0!important;min-width:50mm!important;}
+  #print-target-el .qp-bank p,
+  #print-target-el .qp-bank #p-bank-block{font-size:3.5mm!important;line-height:1.6!important;color:#444!important;}
+  #print-target-el .qp-totals{
+    flex:0 0 auto!important;
+    min-width:50mm!important;
+    max-width:45%!important;
+    order:2!important;
+  }
   #print-target-el .qp-totals td{font-size:3.8mm!important;padding:1.2mm 0!important;}
   #print-target-el .qp-totals td:last-child{text-align:right!important;padding-left:4mm!important;}
   #print-target-el .qp-totals .grand td{font-size:4.4mm!important;font-weight:500!important;border-top:0.5mm solid #185FA5!important;padding-top:2.5mm!important;}
