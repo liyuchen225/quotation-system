@@ -222,20 +222,46 @@ table.qi td.r{text-align:right}
     height:auto!important;
   }
 
-  /* ── quote-paper：只移除視覺裝飾，完整保留所有尺寸和樣式 ── */
+  /* ── quote-paper：明確設定所有關鍵尺寸，與螢幕預覽完全一致 ── */
   .quote-paper{
     box-shadow:none!important;
     border-radius:0!important;
     margin:0 auto!important;
-    /* font-size、padding、max-width、color 完全保留 */
+    /* 明確寫出螢幕值，防止瀏覽器列印縮放干擾 */
+    font-size:13.9px!important;
+    padding:36px 42px!important;
+    max-width:680px!important;
+    width:680px!important;
+    background:white!important;
+    color:#1a1a1a!important;
   }
 
+  /* ── logo：明確設定尺寸 ── */
+  .qp-logo{height:60px!important;max-width:220px!important;}
+  .qp-logo img{height:60px!important;max-width:220px!important;width:auto!important;}
+
+  /* ── 各區塊字體：明確還原螢幕值 ── */
+  .qp-co-name{font-size:18.9px!important;}
+  .qp-co-sub{font-size:11.6px!important;}
+  .qp-title{font-size:18.9px!important;}
+  .qp-num{font-size:12.6px!important;}
+  .qp-block h4{font-size:10.5px!important;}
+  .qp-block p{font-size:11.6px!important;}
+  table.qi th{font-size:10.5px!important;padding:7px 8px!important;}
+  table.qi td{font-size:12.6px!important;padding:7px 8px!important;}
+  .qp-totals td{font-size:12.6px!important;}
+  .qp-totals .grand td{font-size:14.7px!important;}
+  .qp-notes p{font-size:12.1px!important;}
+  .qp-sign-box{font-size:11.6px!important;}
+  .qp-footer{font-size:11.6px!important;}
+
   /* ── quote-paper 內部佈局：強制保留 grid/flex ── */
-  .qp-header{display:flex!important;}
-  .qp-info{display:grid!important;grid-template-columns:1fr 1fr!important;}
-  .qp-bottom-row{display:flex!important;}
-  .qp-signer{display:flex!important;}
-  .qp-footer{display:flex!important;}
+  .qp-header{display:flex!important;justify-content:space-between!important;align-items:center!important;}
+  .qp-info{display:grid!important;grid-template-columns:1fr 1fr!important;gap:18px!important;}
+  .qp-bottom-row{display:flex!important;justify-content:space-between!important;align-items:flex-end!important;}
+  .qp-signer{display:flex!important;gap:16px!important;}
+  .qp-footer{display:flex!important;justify-content:space-between!important;}
+  .qp-totals table{min-width:200px!important;}
 
   /* ── 確保彩色背景印出 ── */
   table.qi thead tr,
