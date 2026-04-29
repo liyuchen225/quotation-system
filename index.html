@@ -1392,9 +1392,22 @@ function refreshClOfficeTable(){
 }
 function saveClientForm(id){
   const name=ge('cf-name')?.value.trim();if(!name){alert('請輸入客戶名稱');return;}
+  const tax=ge('cf-tax')?.value.trim()||'';
+
+  // 統編重複檢查：有填統編時，確認是否已有其他客戶使用相同統編
+  if(tax){
+    const duplicate=clients.find(cl=>
+      cl.tax===tax && String(cl.id)!==String(id)
+    );
+    if(duplicate){
+      alert('⚠️ 統一編號「'+tax+'」已存在於客戶「'+duplicate.name+'」，無法重複新增。');
+      return;
+    }
+  }
+
   const contacts=(window.clContacts||[]).filter(p=>p.name.trim());
   const offices=(window.clOffices||[]).filter(o=>o.name.trim());
-  const data={name,tax:ge('cf-tax')?.value.trim()||'',tel:ge('cf-tel')?.value.trim()||'',fax:ge('cf-fax')?.value.trim()||'',taxType:ge('cf-taxtype')?.value||'extra',
+  const data={name,tax,tel:ge('cf-tel')?.value.trim()||'',fax:ge('cf-fax')?.value.trim()||'',taxType:ge('cf-taxtype')?.value||'extra',
     zip:ge('cf-zip')?.value.trim()||'',addr:ge('cf-addr')?.value.trim()||'',offices,contacts};
   if(id==='-1'||id===-1){
     data.id=String(Date.now());
