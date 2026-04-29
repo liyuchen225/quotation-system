@@ -690,6 +690,33 @@ function markUnsaved(){
   clearTimeout(saveTimer);saveTimer=setTimeout(()=>saveQuote(false),2500);
 }
 
+// ===== 一次性清理重複資料 =====
+function cleanDuplicates(){
+  try{
+    // 清理 clients
+    const cls=lsGet(SK.clients)||[];
+    if(cls.length){
+      const map=new Map();cls.forEach(c=>{map.set(String(c.id),c);});
+      const clean=Array.from(map.values());
+      if(clean.length<cls.length){lsSet(SK.clients,clean);console.log('已清理重複客戶：'+cls.length+'→'+clean.length);}
+    }
+    // 清理 companies
+    const cos=lsGet(SK.companies)||[];
+    if(cos.length){
+      const map=new Map();cos.forEach(c=>{map.set(String(c.id),c);});
+      const clean=Array.from(map.values());
+      if(clean.length<cos.length){lsSet(SK.companies,clean);console.log('已清理重複公司：'+cos.length+'→'+clean.length);}
+    }
+    // 清理 quotes
+    const qs=lsGet(SK.quotes)||[];
+    if(qs.length){
+      const map=new Map();qs.forEach(q=>{const k=q.num||q.id;if(k)map.set(k,q);});
+      const clean=Array.from(map.values());
+      if(clean.length<qs.length){lsSet(SK.quotes,clean);console.log('已清理重複報價單：'+qs.length+'→'+clean.length);}
+    }
+  }catch(e){}
+}
+
 // ===== 立即 restore UI（在 API 前執行，避免閃爍）=====
 function restoreUIState(){
   try{
@@ -741,6 +768,8 @@ function restoreUIState(){
 
 // ===== INIT =====
 async function initApp(){
+  // 先清理重複資料
+  cleanDuplicates();
   // ★ 立即 restore（API 之前），使用者看不到閃爍
   restoreUIState();
   setSaveDot('saving','連線中…');
@@ -780,6 +809,9 @@ async function initApp(){
           fax:cl.fax||'',offices:(cl.offices||[]),contacts:(cl.contacts||[]).map(p=>({...p,id:String(p.id||''),name:p.name||'',dept:p.dept||'',title:p.title||'',ext:p.ext||'',email:p.email||'',mobile:p.mobile||'',note:p.note||'',officeIdx:p.officeIdx??null}))}));
         clients=dedupeById(mapped);
       }else if(cachedCls.length){clients=dedupeById(cachedCls);}
+      // 儲存前確保無重複
+      companies=dedupeById(companies);
+      clients=dedupeById(clients);
       lsSet(SK.companies,companies);lsSet(SK.clients,clients);
     }else{throw new Error(result.message||'API 錯誤');}
   }catch(e){
@@ -929,6 +961,10 @@ async function saveQuote(manual){
 
 // ===== SAVE CLIENTS =====
 async function saveClients(cl){
+  // dedup：確保 clients 陣列不重複
+  const clMap=new Map();
+  clients.forEach(c=>{clMap.set(String(c.id),c);});
+  clients=Array.from(clMap.values());
   lsSet(SK.clients,clients);
   try{await apiPost({action:'saveClient',data:cl});showToast('客戶資料已同步至雲端 ✓');}
   catch(e){showToast('⚠️ 雲端連線失敗，已儲存至本機');}
@@ -1214,6 +1250,9 @@ function renderPreview(){
 function renderClientList(search=''){
   const c=ge('cl-list');
   const q=(search||'').toLowerCase();
+  // 渲染前 dedup（防止重複顯示）
+  const clMap=new Map();clients.forEach(cl=>{clMap.set(String(cl.id),cl);});
+  clients=Array.from(clMap.values());
   const clCount={};
   (lsGet(SK.quotes)||[]).forEach(qt=>{const id=String(qt.clientId||'');if(id)clCount[id]=(clCount[id]||0)+1;});
   const sorted=[...clients].sort((a,b)=>{const ca=clCount[String(a.id)]||0,cb=clCount[String(b.id)]||0;if(cb!==ca)return cb-ca;return(a.name||'').localeCompare(b.name||'');});
