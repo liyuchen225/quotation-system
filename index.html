@@ -213,31 +213,32 @@ table.qi td.r{text-align:right}
   *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
   body>*{display:none!important}
   #print-snapshot{
-    display:flex!important;
-    align-items:center!important;
-    justify-content:center!important;
-    position:fixed!important;
-    top:0!important;left:0!important;right:0!important;bottom:0!important;
-    width:100%!important;height:100%!important;
+    display:block!important;
+    width:100%!important;
     margin:0!important;padding:0!important;
     background:white!important;
   }
   #print-snapshot img{
     display:block!important;
-    width:19cm!important;
-    max-width:none!important;
+    width:100%!important;
+    max-width:100%!important;
     height:auto!important;
-    margin:auto!important;
+    margin:0 auto!important;
   }
 }
 
-/* 手機列印：只調整 font-size 讓內容縮小以符合一頁 */
+/* 手機列印：圖片置中填滿 */
 @media print and (max-width:768px){
-  .quote-paper{
-    font-size:2.8mm!important;
-    padding:4mm 5mm!important;
+  @page{margin:1cm}
+  #print-snapshot{
+    display:block!important;
+    width:100%!important;
   }
-  .qp-co-name{font-size:3.2mm!important;}
+  #print-snapshot img{
+    width:100%!important;
+    max-width:100%!important;
+    margin:0 auto!important;
+  }
 }
 
 /* ── 手機列印：只覆寫字體和 padding ── */
@@ -2084,7 +2085,7 @@ async function printQuote(){
   const imgEl = document.createElement('img');
   imgEl.src = canvas.toDataURL('image/jpeg', 0.85);
   // 強制寬度填滿，用 setAttribute 確保優先權最高
-  imgEl.style.cssText = 'display:block;width:19cm;height:auto;margin:auto;';
+  imgEl.style.cssText = 'display:block;width:100%;height:auto;margin:0 auto;';
   snap.appendChild(imgEl);
   document.body.insertBefore(snap, document.body.firstChild);
 
