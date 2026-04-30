@@ -1974,145 +1974,121 @@ initApp();
 async function printQuote(){
   const paper = document.querySelector('#tab-quote .quote-paper');
   if(!paper){ showToast('請先開啟報價單'); return; }
-  if(typeof html2canvas === 'undefined'){ showToast('截圖模組載入中，請稍候'); return; }
+  if(typeof html2canvas==='undefined'){ showToast('截圖模組載入中，請稍候'); return; }
 
-  showToast('準備列印中…', 8000);
+  showToast('準備列印中…', 10000);
 
-  // 把所有 img 轉成 PNG base64（含 SVG，html2canvas 才能正確截圖）
-  const imgs = Array.from(paper.querySelectorAll('img'));
-  const origSrcs = imgs.map(img => img.src);
-  await Promise.all(imgs.map(img => new Promise(resolve => {
+  const DESKTOP_W  = 680;
+  const DESKTOP_FS = '13.9px';
+  const DESKTOP_PAD= '36px 42px';
+
+  // 取得所有 CSS
+  const allCSS = Array.from(document.querySelectorAll('style'))
+    .map(s=>s.textContent).join('\n');
+
+  // clone paper 的 HTML
+  const cloneEl = paper.cloneNode(true);
+  cloneEl.style.cssText = [
+    'font-size:'+DESKTOP_FS,
+    'width:'+DESKTOP_W+'px',
+    'max-width:'+DESKTOP_W+'px',
+    'padding:'+DESKTOP_PAD,
+    'box-shadow:none',
+    'border-radius:0',
+    'margin:0',
+    'box-sizing:border-box',
+    'background:white',
+    'color:#1a1a1a',
+  ].join(';');
+
+  // 把 img 轉成 base64 PNG（含 SVG）
+  const paperImgs = Array.from(paper.querySelectorAll('img'));
+  const cloneImgs = Array.from(cloneEl.querySelectorAll('img'));
+  const origSrcs  = paperImgs.map(img=>img.src);
+
+  await Promise.all(paperImgs.map((img,i)=>new Promise(resolve=>{
     if(!img.src){ resolve(); return; }
-
-    // 統一用 Image + canvas 轉成 PNG base64
-    // （SVG base64 也需要這步，html2canvas 不支援 SVG data URL）
-    const tmp = new Image();
-    tmp.crossOrigin = 'anonymous';
-
-    tmp.onload = () => {
-      try {
-        const cv = document.createElement('canvas');
-        // 使用 img 顯示尺寸，確保比例正確
-        cv.width  = tmp.naturalWidth  || img.offsetWidth  || 200;
-        cv.height = tmp.naturalHeight || img.offsetHeight || 80;
-        const ctx = cv.getContext('2d');
-        ctx.drawImage(tmp, 0, 0, cv.width, cv.height);
-        img.src = cv.toDataURL('image/png');
-      } catch(e) {
-        // canvas 轉換失敗（例如跨域）：保持原始 src
-      }
+    const tmp=new Image();
+    tmp.crossOrigin='anonymous';
+    tmp.onload=()=>{
+      try{
+        const cv=document.createElement('canvas');
+        cv.width =tmp.naturalWidth ||200;
+        cv.height=tmp.naturalHeight||80;
+        cv.getContext('2d').drawImage(tmp,0,0,cv.width,cv.height);
+        const b64=cv.toDataURL('image/png');
+        if(cloneImgs[i]) cloneImgs[i].src=b64;
+      }catch(e){}
       resolve();
     };
-    tmp.onerror = () => resolve();
-
-    // SVG base64：直接設給 Image，瀏覽器會渲染
-    // 外部 URL：加時間戳避免快取 CORS 問題
-    if(img.src.startsWith('data:')) {
-      tmp.src = img.src;
-    } else {
-      tmp.src = img.src + (img.src.includes('?') ? '&' : '?') + '_t=' + Date.now();
-    }
+    tmp.onerror=()=>resolve();
+    tmp.src=img.src.startsWith('data:')?img.src:img.src+(img.src.includes('?')?'&':'?')+'_t='+Date.now();
   })));
 
-  try {
-    const DESKTOP_W   = 680;
-    const DESKTOP_FS  = '13.9px';
-    const DESKTOP_PAD = '36px 42px';
+  // 建立 iframe，固定 680px 寬，完全不受手機螢幕限制
+  const iframe=document.createElement('iframe');
+  iframe.style.cssText='position:fixed;top:0;left:0;width:680px;height:1px;border:none;opacity:0;pointer-events:none;z-index:-1';
+  document.body.appendChild(iframe);
 
-    // 建立螢幕外的容器（position:absolute 讓 html2canvas 正確計算座標）
-    const offscreen = document.createElement('div');
-    offscreen.style.cssText = [
-      'position:absolute',
-      'top:0',
-      'left:0',
-      'width:' + DESKTOP_W + 'px',
-      'background:white',
-      'z-index:-9999',
-      'opacity:0',
-      'pointer-events:none',
-      'overflow:visible'
-    ].join(';');
-    document.body.appendChild(offscreen);
+  const iDoc=iframe.contentDocument||iframe.contentWindow.document;
+  iDoc.open();
+  iDoc.write('<!DOCTYPE html><html><head><meta charset="UTF-8">'+
+    '<style>html,body{margin:0;padding:0;width:680px;background:white}'+
+    allCSS+'</style></head><body>'+cloneEl.outerHTML+'</body></html>');
+  iDoc.close();
 
-    // clone paper 並套用桌機版樣式
-    const clone = paper.cloneNode(true);
-    clone.style.cssText = [
-      'font-size:' + DESKTOP_FS,
-      'width:' + DESKTOP_W + 'px',
-      'max-width:' + DESKTOP_W + 'px',
-      'padding:' + DESKTOP_PAD,
-      'box-shadow:none',
-      'border-radius:0',
-      'margin:0',
-      'box-sizing:border-box'
-    ].join(';');
-    offscreen.appendChild(clone);
+  // 等 iframe 渲染完成
+  await new Promise(r=>setTimeout(r,500));
 
-    // 把已轉成 base64 的 img src 同步到 clone
-    const cloneImgs = Array.from(clone.querySelectorAll('img'));
-    const paperImgs = Array.from(paper.querySelectorAll('img'));
-    cloneImgs.forEach((img, i) => {
-      if(paperImgs[i]) img.src = paperImgs[i].src;
+  try{
+    const target=iDoc.querySelector('.quote-paper')||iDoc.body;
+    const h=target.scrollHeight||iDoc.body.scrollHeight;
+    iframe.style.height=h+'px';
+
+    const a4W=794;
+    const printScale=Math.max(2,(a4W/DESKTOP_W)*2);
+
+    const canvas=await html2canvas(target,{
+      scale:printScale,
+      useCORS:false,
+      allowTaint:false,
+      backgroundColor:'#ffffff',
+      logging:false,
+      imageTimeout:0,
+      width:DESKTOP_W,
+      height:h,
+      windowWidth:DESKTOP_W,
+      scrollX:0,
+      scrollY:0,
     });
 
-    // 等待重繪
-    await new Promise(r => setTimeout(r, 150));
+    document.body.removeChild(iframe);
 
-    const a4W = 794;
-    const printScale = Math.max(2, (a4W / DESKTOP_W) * 2);
-
-    const canvas = await html2canvas(clone, {
-      scale: printScale,
-      useCORS: false,
-      allowTaint: false,
-      backgroundColor: '#ffffff',
-      logging: false,
-      imageTimeout: 0,
-      width: DESKTOP_W,
-      height: clone.scrollHeight,
-      x: 0,
-      y: 0,
-      scrollX: 0,
-      scrollY: 0,
-    });
-
-    // 清除 offscreen 容器
-    document.body.removeChild(offscreen);
-
-    // 還原 img src 和 paper 樣式（確保 catch 也能還原）
-    imgs.forEach((img, i) => { img.src = origSrcs[i]; });
-
-    // 建立 print-snapshot div，放入截圖
-    let snap = document.getElementById('print-snapshot');
+    // 放入 print-snapshot 列印
+    let snap=document.getElementById('print-snapshot');
     if(snap) document.body.removeChild(snap);
-    snap = document.createElement('div');
-    snap.id = 'print-snapshot';
-    // inline style 確保 iOS Safari 也能正確填滿頁面
-    snap.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;margin:0;padding:0;background:white;z-index:99999;overflow:hidden';
-    const imgEl = document.createElement('img');
-    imgEl.src = canvas.toDataURL('image/png');
-    imgEl.style.cssText = 'display:block;width:100%;height:auto;margin:0;padding:0';
+    snap=document.createElement('div');
+    snap.id='print-snapshot';
+    snap.style.cssText='position:fixed;top:0;left:0;right:0;bottom:0;margin:0;padding:0;background:white;z-index:99999;overflow:hidden';
+    const imgEl=document.createElement('img');
+    imgEl.src=canvas.toDataURL('image/png');
+    imgEl.style.cssText='display:block;width:100%;height:auto;margin:0;padding:0';
     snap.appendChild(imgEl);
-    document.body.insertBefore(snap, document.body.firstChild);
+    document.body.insertBefore(snap,document.body.firstChild);
 
-    // 列印
-    await new Promise(r => setTimeout(r, 200));
+    await new Promise(r=>setTimeout(r,200));
     window.print();
 
-  } catch(err) {
-    imgs.forEach((img, i) => { img.src = origSrcs[i]; });
-    // 清除 offscreen 容器
-    const _off = document.querySelector('div[style*="left:-9999px"]');
-    if(_off) document.body.removeChild(_off);
+  }catch(err){
+    try{document.body.removeChild(iframe);}catch(e){}
     showToast('列印失敗，請再試一次');
     console.error(err);
   }
 
-  // 列印後清除
-  setTimeout(() => {
-    const snap = document.getElementById('print-snapshot');
+  setTimeout(()=>{
+    const snap=document.getElementById('print-snapshot');
     if(snap) document.body.removeChild(snap);
-  }, 2000);
+  },2000);
 }
 </script>
 </body>
