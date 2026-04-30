@@ -207,53 +207,21 @@ table.qi td.r{text-align:right}
 .status-select-wrap select{font-size:12px;padding:4px 8px;border:1px solid #ccc;border-radius:var(--radius);background:var(--bg);color:var(--text)}
 
 @media print{
-  /* A4 margin:0，讓 quote-paper 自己的 padding 當邊距 */
   @page{size:A4 portrait;margin:0}
   *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
-
-  /* 隱藏所有 UI */
-  body,html{margin:0!important;padding:0!important;background:white!important}
-  .tabnav,#quote-save-bar,.quote-sidebar,.toolbar,.items-editor,
-  #quote-empty-state,#tab-quotes,#tab-clients,#tab-companies
-  {display:none!important}
-
-  /* 父層全部 block，無邊框 */
-  .app,#tab-quote,#quote-editor,.quote-main{
-    display:block!important;border:none!important;box-shadow:none!important;
-    border-radius:0!important;margin:0!important;padding:0!important;
-    min-height:0!important;overflow:visible!important;background:white!important;
-    width:100%!important;max-width:100%!important;
+  body>*{display:none!important}
+  #print-snapshot{
+    display:block!important;
+    position:fixed!important;
+    top:0!important;left:0!important;
+    width:100%!important;height:100%!important;
+    margin:0!important;padding:0!important;
   }
-
-  /* preview-area：移除灰色背景和 padding */
-  .preview-area{
-    display:block!important;background:white!important;
-    padding:0!important;margin:0!important;overflow:visible!important;
+  #print-snapshot img{
+    width:100%!important;
     height:auto!important;
+    display:block!important;
   }
-
-  /* quote-paper：填滿 A4 寬度，保留自身 padding 作邊距
-     螢幕版 max-width:680px + padding:2.6em 3em
-     列印版：width:100%，padding 保留（約 36px 42px = 9.5mm 11mm）
-     這樣內容區域比例與螢幕完全一致 */
-  .quote-paper{
-    box-shadow:none!important;border-radius:0!important;
-    margin:0!important;
-    width:100%!important;max-width:100%!important;
-    /* padding、font-size 完全保留螢幕值 */
-  }
-
-  /* 保留 layout */
-  .qp-header{display:flex!important;position:relative!important}
-  .qp-names-row{display:grid!important;grid-template-columns:1fr 1fr!important}
-  .qp-info{display:grid!important;grid-template-columns:1fr 1fr!important}
-  .qp-bottom-row{display:flex!important;flex-direction:row!important}
-  .qp-bank-cell{flex:1!important;min-width:0!important}
-  .qp-totals-cell{flex:0 0 50%!important;display:flex!important;justify-content:flex-end!important}
-  .qp-signer{display:flex!important}
-  .qp-footer{display:flex!important;justify-content:space-between!important}
-  table.qi thead tr{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
-  .qp-notes{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
 }
 
 /* iPad */
@@ -354,6 +322,7 @@ table.qi td.r{text-align:right}
   .qli-num{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0}
 }
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body>
 <div class="app">
@@ -1997,25 +1966,72 @@ function newQuote(){
 initApp();
 
 // ===== 列印：visibility 方式，不開新視窗，最穩定 =====
-function printQuote(){
+async function printQuote(){
   const paper = document.querySelector('#tab-quote .quote-paper');
   if(!paper){ showToast('請先開啟報價單'); return; }
+  if(typeof html2canvas === 'undefined'){ showToast('截圖模組載入中，請稍候'); return; }
 
-  // 確保 tab-quote 和 quote-editor 是顯示狀態
-  const tabEl    = ge('tab-quote');
-  const editorEl = ge('quote-editor');
-  const wasTabHidden    = tabEl && !tabEl.classList.contains('active');
-  const wasEditorHidden = editorEl && editorEl.style.display === 'none';
+  showToast('準備列印中…', 8000);
 
-  if(wasTabHidden)    { tabEl.classList.add('active'); }
-  if(wasEditorHidden) { editorEl.style.display = 'grid'; }
+  // 先把所有 img 轉成 base64（避免 CORS 問題）
+  const imgs = Array.from(paper.querySelectorAll('img'));
+  const origSrcs = imgs.map(img => img.src);
+  await Promise.all(imgs.map(img => new Promise(resolve => {
+    if(!img.src || img.src.startsWith('data:')){ resolve(); return; }
+    const tmp = new Image();
+    tmp.crossOrigin = 'anonymous';
+    tmp.onload = () => {
+      try {
+        const cv = document.createElement('canvas');
+        cv.width = tmp.naturalWidth; cv.height = tmp.naturalHeight;
+        cv.getContext('2d').drawImage(tmp, 0, 0);
+        img.src = cv.toDataURL('image/png');
+      } catch(e) {}
+      resolve();
+    };
+    tmp.onerror = () => resolve();
+    tmp.src = img.src + (img.src.includes('?') ? '&' : '?') + '_t=' + Date.now();
+  })));
 
-  // 直接列印原始 DOM，@media print 隱藏所有 UI
-  window.print();
+  try {
+    // 截圖 quote-paper（scale:2 = Retina 清晰度）
+    const canvas = await html2canvas(paper, {
+      scale: 2,
+      useCORS: false,
+      allowTaint: false,
+      backgroundColor: '#ffffff',
+      logging: false,
+      imageTimeout: 0,
+    });
 
-  // 還原
-  if(wasTabHidden)    { tabEl.classList.remove('active'); }
-  if(wasEditorHidden) { editorEl.style.display = 'none'; }
+    // 還原 img src
+    imgs.forEach((img, i) => { img.src = origSrcs[i]; });
+
+    // 建立 print-snapshot div，放入截圖
+    let snap = document.getElementById('print-snapshot');
+    if(snap) document.body.removeChild(snap);
+    snap = document.createElement('div');
+    snap.id = 'print-snapshot';
+    const img = document.createElement('img');
+    img.src = canvas.toDataURL('image/png');
+    snap.appendChild(img);
+    document.body.insertBefore(snap, document.body.firstChild);
+
+    // 列印
+    await new Promise(r => setTimeout(r, 200));
+    window.print();
+
+  } catch(err) {
+    imgs.forEach((img, i) => { img.src = origSrcs[i]; });
+    showToast('列印失敗，請再試一次');
+    console.error(err);
+  }
+
+  // 列印後清除
+  setTimeout(() => {
+    const snap = document.getElementById('print-snapshot');
+    if(snap) document.body.removeChild(snap);
+  }, 2000);
 }
 </script>
 </body>
