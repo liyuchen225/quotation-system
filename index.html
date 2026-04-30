@@ -139,12 +139,12 @@ table.qi th{padding:0.5em 0.58em;font-size:0.76em;text-transform:uppercase;lette
 table.qi td{padding:0.5em 0.58em;border-bottom:1px solid #d0dae8;font-size:0.91em;color:#1a1a1a}
 table.qi td.r{text-align:right}
 /* 匯款+總金額：grid 兩欄各50%，與 qp-info 架構相同 */
-.qp-bottom-row{display:grid;grid-template-columns:1fr 1fr;gap:0.6em;margin-top:0.6em;align-items:start}
-.qp-bank-cell{min-width:0}
-.qp-totals-cell{min-width:0;display:flex;justify-content:flex-end}
+/* 匯款+總金額：flex，左欄佔剩餘空間，右欄固定約50% */
+.qp-bottom-row{display:flex;flex-direction:row;gap:0.6em;margin-top:0.6em;align-items:flex-start}
+.qp-bank-cell{flex:1;min-width:0}
+.qp-totals-cell{flex:0 0 50%;min-width:0;display:flex;justify-content:flex-end}
 .qp-bank h4{font-size:0.76em;text-transform:uppercase;letter-spacing:.08em;color:#444;margin-bottom:0.4em}
 .qp-bank p,.qp-bank-cell p{font-size:0.84em;color:#444;line-height:1.6}
-/* 向後相容 */
 .qp-bank{min-width:0}
 .qp-totals{width:auto}
 .qp-totals table{width:100%}
@@ -273,12 +273,12 @@ table.qi td.r{text-align:right}
   .qp-block h4{font-size:0.76em;line-height:1.4;margin-bottom:0.3em}
   .qp-block p{font-size:0.84em;line-height:1.5;color:#444}
   .qp-co-sub{font-size:0.84em!important;line-height:1.5!important;color:#444!important;word-break:break-word;overflow-wrap:anywhere}
-  /* 手機：匯款+總金額 grid 兩欄各50%，與桌機相同架構 */
-  .qp-bottom-row{display:grid!important;grid-template-columns:1fr 1fr!important;gap:0.5em!important;align-items:start!important}
-  .qp-bank-cell{min-width:0}
+  /* 手機：匯款+總金額 flex，左欄佔剩餘空間，右欄固定50% */
+  .qp-bottom-row{display:flex!important;flex-direction:row!important;gap:0.5em!important;align-items:flex-start!important}
+  .qp-bank-cell{flex:1!important;min-width:0!important}
   .qp-bank h4{font-size:0.7em;text-align:left}
   .qp-bank p{font-size:0.82em;line-height:1.5;text-align:left}
-  .qp-totals-cell{display:flex!important;justify-content:flex-end!important;min-width:0}
+  .qp-totals-cell{flex:0 0 50%!important;min-width:0!important;display:flex!important;justify-content:flex-end!important}
   .qp-totals table{width:auto}
   .qp-totals td{padding:1.5px 0;font-size:0.82em;white-space:nowrap}
   .qp-totals td:first-child{text-align:left;padding-right:6px}
@@ -1997,9 +1997,9 @@ function printQuote(){
     '.qp-co-sub,.qp-detail-cell{word-break:normal!important;overflow-wrap:normal!important}'+
     '.qp-header{display:flex!important;flex-wrap:nowrap!important;position:relative!important}'+
     '.qp-title{position:absolute!important;left:0!important;right:0!important;text-align:center!important;pointer-events:none!important}'+
-    '.qp-bottom-row{display:grid!important;grid-template-columns:1fr 1fr!important;gap:0.5em!important;align-items:start!important}'+
-    '.qp-bank-cell{min-width:0!important}'+
-    '.qp-totals-cell{display:flex!important;justify-content:flex-end!important;min-width:0!important}'+
+    '.qp-bottom-row{display:flex!important;flex-direction:row!important;gap:0.5em!important;align-items:flex-start!important}'+
+    '.qp-bank-cell{flex:1!important;min-width:0!important}'+
+    '.qp-totals-cell{flex:0 0 50%!important;min-width:0!important;display:flex!important;justify-content:flex-end!important}'+
     '.qp-totals td{font-size:0.84em!important;white-space:nowrap!important;padding:0.25em 0!important}'+
     '.qp-totals td:first-child{text-align:left!important;padding-right:0.8em!important}'+
     '.qp-totals td:last-child{text-align:right!important}'+
