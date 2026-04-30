@@ -2014,14 +2014,16 @@ async function printQuote(){
     tmp.src = img.src;
   })));
 
-  // Step 1.5: 注入暫時 style 強制桌機版樣式（覆蓋手機版 CSS）
+  // Step 1.5: 注入暫時 style 強制桌機版樣式（不改寬度，避免手機截圖失敗）
   const isMobile = window.innerWidth <= 768;
   const origStyle = paper.getAttribute('style') || '';
   const tmpStyle = document.createElement('style');
   tmpStyle.id = '__print_override__';
+  // 手機版：只調整 layout，不強制寬度（寬度交給 html2canvas windowWidth 處理）
+  const paperW = isMobile ? window.innerWidth - 16 : 680;
   tmpStyle.textContent =
     '#tab-quote .quote-paper{' +
-      'font-size:13.9px!important;width:680px!important;max-width:680px!important;' +
+      'font-size:13.9px!important;' +
       'padding:36px 42px!important;box-shadow:none!important;border-radius:0!important;margin:0!important;' +
     '}' +
     '#tab-quote .quote-paper .qp-header{display:flex!important;flex-wrap:nowrap!important;position:relative!important;align-items:center!important;}' +
@@ -2035,12 +2037,12 @@ async function printQuote(){
   await new Promise(r => setTimeout(r, 300));
 
   // Step 2: 取得 paper 的精確尺寸和位置
-  // Step 2: 固定桌機寬度截圖
-  const W = 680;
+  // Step 2: 取得實際寬度
+  const W = paper.offsetWidth || 680;
   const H = paper.scrollHeight;
 
   // Step 3: 截圖
-  const scale = 2; // 固定 2x，約 150dpi
+  const scale = 2;
 
   let canvas;
   try {
@@ -2053,9 +2055,6 @@ async function printQuote(){
       imageTimeout: 0,
       width: W,
       height: H,
-      windowWidth: W,
-      scrollX: 0,
-      scrollY: 0,
     });
   } catch(err) {
     // 還原 img
