@@ -2030,6 +2030,11 @@ async function downloadImage(){
   if(titleEl) titleEl.style.cssText = 'position:absolute!important;top:50%!important;transform:translateY(-50%)!important;left:0!important;right:0!important;text-align:center!important;';
   if(headerEl) headerEl.style.cssText = 'display:flex!important;flex-wrap:nowrap!important;position:relative!important;align-items:center!important;';
 
+  // 截圖前暫時縮小備註字體（截圖後還原）
+  const notesP = paper.querySelector('.qp-notes p');
+  const origNotesFontSize = notesP ? notesP.style.fontSize : '';
+  if(notesP) notesP.style.fontSize = '0.72em';
+
   await new Promise(r => setTimeout(r, 300));
 
   let canvas;
@@ -2052,6 +2057,7 @@ async function downloadImage(){
   paper.setAttribute('style', origStyle);
   if(titleEl) titleEl.setAttribute('style', origTitleStyle);
   if(headerEl) headerEl.setAttribute('style', origHeaderStyle);
+  if(notesP) notesP.style.fontSize = origNotesFontSize;
   imgs.forEach((img, i) => { img.src = origSrcs[i]; });
 
   const link = document.createElement('a');
