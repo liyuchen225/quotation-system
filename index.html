@@ -1980,7 +1980,7 @@ function newQuote(){
 // ===== BOOT =====
 initApp();
 
-// ===== 列印：html2canvas 截圖，width:100% 填滿 A4 =====
+// ===== 列印：截桌機版報價單，width:100% 放入列印框 =====
 async function printQuote(){
   const paper = document.querySelector('#tab-quote .quote-paper');
   if(!paper){ showToast('請先開啟報價單'); return; }
@@ -1988,7 +1988,7 @@ async function printQuote(){
 
   showToast('準備列印中…', 10000);
 
-  // img 轉 PNG base64（含 SVG logo）
+  // Step 1: img 轉 PNG base64（含 SVG logo）
   const imgs = Array.from(paper.querySelectorAll('img'));
   const origSrcs = imgs.map(img => img.src);
   await Promise.all(imgs.map(img => new Promise(resolve => {
@@ -1997,7 +1997,8 @@ async function printQuote(){
     tmp.onload = () => {
       try {
         const cv = document.createElement('canvas');
-        cv.width = tmp.naturalWidth||300; cv.height = tmp.naturalHeight||120;
+        cv.width = tmp.naturalWidth||300;
+        cv.height = tmp.naturalHeight||120;
         cv.getContext('2d').drawImage(tmp, 0, 0, cv.width, cv.height);
         const png = cv.toDataURL('image/png');
         if(png !== 'data:,') img.src = png;
@@ -2008,23 +2009,38 @@ async function printQuote(){
     tmp.src = img.src;
   })));
 
-  // 注入桌機版 style（覆蓋手機版 CSS）
-  const tmpStyle = document.createElement('style');
-  tmpStyle.id = '__print_override__';
-  tmpStyle.textContent =
-    '#tab-quote .quote-paper{font-size:13.9px!important;padding:36px 42px!important;'+
-    'box-shadow:none!important;border-radius:0!important;margin:0!important;}'+
-    '#tab-quote .quote-paper .qp-header{display:flex!important;flex-wrap:nowrap!important;position:relative!important;align-items:center!important;}'+
-    '#tab-quote .quote-paper .qp-title{position:absolute!important;top:50%!important;transform:translateY(-50%)!important;left:0!important;right:0!important;text-align:center!important;width:auto!important;order:0!important;margin:0!important;}'+
-    '#tab-quote .quote-paper .qp-names-row{display:grid!important;grid-template-columns:1fr 1fr!important;}'+
-    '#tab-quote .quote-paper .qp-info{display:grid!important;grid-template-columns:1fr 1fr!important;}'+
-    '#tab-quote .quote-paper .qp-bottom-row{display:flex!important;flex-direction:row!important;}';
-  document.head.appendChild(tmpStyle);
+  // Step 2: 暫時把 paper 強制改成桌機版 680px
+  // 用 inline style 覆蓋所有 CSS
+  const origStyle = paper.getAttribute('style') || '';
+  paper.style.cssText =
+    'font-size:13.9px!important;' +
+    'width:680px!important;' +
+    'max-width:680px!important;' +
+    'padding:36px 42px!important;' +
+    'box-shadow:none!important;' +
+    'border-radius:0!important;' +
+    'margin:0!important;' +
+    'box-sizing:border-box!important;' +
+    'position:fixed!important;' +
+    'top:0!important;' +
+    'left:0!important;' +
+    'z-index:99999!important;' +
+    'background:white!important;';
+
+  // 同時修正 header 內的 qp-title（手機版是 static，桌機版是 absolute）
+  const titleEl = paper.querySelector('.qp-title');
+  const origTitleStyle = titleEl ? titleEl.getAttribute('style')||'' : '';
+  if(titleEl) titleEl.style.cssText = 'position:absolute!important;top:50%!important;transform:translateY(-50%)!important;left:0!important;right:0!important;text-align:center!important;';
+  const headerEl = paper.querySelector('.qp-header');
+  const origHeaderStyle = headerEl ? headerEl.getAttribute('style')||'' : '';
+  if(headerEl) headerEl.style.cssText = 'display:flex!important;flex-wrap:nowrap!important;position:relative!important;align-items:center!important;';
+
+  // 等瀏覽器重繪
   await new Promise(r => setTimeout(r, 300));
 
+  // Step 3: 截圖
   let canvas;
   try {
-    // 直接截 paper 元素，width:100% 讓圖片填滿 A4
     canvas = await html2canvas(paper, {
       scale: 2,
       useCORS: false,
@@ -2032,28 +2048,37 @@ async function printQuote(){
       backgroundColor: '#ffffff',
       logging: false,
       imageTimeout: 0,
+      x: 0,
+      y: 0,
+      scrollX: 0,
+      scrollY: 0,
+      width: 680,
+      height: paper.scrollHeight,
+      windowWidth: 680,
     });
   } catch(err) {
+    // 還原
     imgs.forEach((img, i) => { img.src = origSrcs[i]; });
-    const ts = document.getElementById('__print_override__');
-    if(ts) ts.remove();
+    paper.setAttribute('style', origStyle);
+    if(titleEl) titleEl.setAttribute('style', origTitleStyle);
+    if(headerEl) headerEl.setAttribute('style', origHeaderStyle);
     showToast('列印失敗，請再試一次');
     return;
   }
 
-  // 還原
+  // Step 4: 還原所有樣式
   imgs.forEach((img, i) => { img.src = origSrcs[i]; });
-  const ts = document.getElementById('__print_override__');
-  if(ts) ts.remove();
+  paper.setAttribute('style', origStyle);
+  if(titleEl) titleEl.setAttribute('style', origTitleStyle);
+  if(headerEl) headerEl.setAttribute('style', origHeaderStyle);
 
-  // 放入 #print-snapshot，width:100% 自動填滿 A4
+  // Step 5: 放入 #print-snapshot，width:100% 填滿 A4
   let snap = document.getElementById('print-snapshot');
   if(snap) snap.parentNode.removeChild(snap);
   snap = document.createElement('div');
   snap.id = 'print-snapshot';
   const imgEl = document.createElement('img');
   imgEl.src = canvas.toDataURL('image/jpeg', 0.85);
-  imgEl.style.cssText = 'display:block;width:100%;height:auto;margin:0;padding:0';
   snap.appendChild(imgEl);
   document.body.insertBefore(snap, document.body.firstChild);
 
