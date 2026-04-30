@@ -2014,17 +2014,24 @@ async function printQuote(){
     tmp.src = img.src;
   })));
 
-  // Step 1.5: 所有裝置都用桌機版樣式截圖（確保一致性）
+  // Step 1.5: 注入暫時 style 強制桌機版樣式（覆蓋手機版 CSS）
   const isMobile = window.innerWidth <= 768;
   const origStyle = paper.getAttribute('style') || '';
-  // 暫時套用桌機版樣式
-  paper.style.setProperty('font-size', '13.9px', 'important');
-  paper.style.setProperty('width', '680px', 'important');
-  paper.style.setProperty('max-width', '680px', 'important');
-  paper.style.setProperty('padding', '36px 42px', 'important');
-  paper.style.setProperty('box-shadow', 'none', 'important');
-  paper.style.setProperty('border-radius', '0', 'important');
-  paper.style.setProperty('margin', '0', 'important');
+  const tmpStyle = document.createElement('style');
+  tmpStyle.id = '__print_override__';
+  tmpStyle.textContent =
+    '#tab-quote .quote-paper{' +
+      'font-size:13.9px!important;width:680px!important;max-width:680px!important;' +
+      'padding:36px 42px!important;box-shadow:none!important;border-radius:0!important;margin:0!important;' +
+    '}' +
+    '#tab-quote .quote-paper .qp-header{display:flex!important;flex-wrap:nowrap!important;position:relative!important;align-items:center!important;}' +
+    '#tab-quote .quote-paper .qp-title{position:absolute!important;top:50%!important;transform:translateY(-50%)!important;left:0!important;right:0!important;text-align:center!important;width:auto!important;order:0!important;margin:0!important;}' +
+    '#tab-quote .quote-paper .qp-logo{order:0!important;height:4.3em!important;}' +
+    '#tab-quote .quote-paper .qp-meta{order:1!important;flex:1!important;text-align:right!important;}' +
+    '#tab-quote .quote-paper .qp-names-row{display:grid!important;grid-template-columns:1fr 1fr!important;}' +
+    '#tab-quote .quote-paper .qp-info{display:grid!important;grid-template-columns:1fr 1fr!important;}' +
+    '#tab-quote .quote-paper .qp-bottom-row{display:flex!important;flex-direction:row!important;}';
+  document.head.appendChild(tmpStyle);
   await new Promise(r => setTimeout(r, 300));
 
   // Step 2: 取得 paper 的精確尺寸和位置
@@ -2058,10 +2065,11 @@ async function printQuote(){
     return;
   }
 
-  // Step 4: 還原 img src 和手機版樣式
+  // Step 4: 還原 img src、style 和移除暫時 CSS
   imgs.forEach((img, i) => { img.src = origSrcs[i]; });
-  // 還原原始樣式
   paper.setAttribute('style', origStyle);
+  const ts = document.getElementById('__print_override__');
+  if(ts) ts.remove();
 
   // Step 5: 放入 #print-snapshot 並列印
   let snap = document.getElementById('print-snapshot');
