@@ -222,15 +222,18 @@ table.qi td.r{text-align:right}
   }
 
   .quote-paper{
-    font-size:13.9px!important;width:100%!important;max-width:100%!important;
-    padding:11mm 13mm!important;box-shadow:none!important;border-radius:0!important;
+    font-size:5mm!important;width:100%!important;max-width:100%!important;
+    padding:6mm 8mm!important;box-shadow:none!important;border-radius:0!important;
     margin:0!important;box-sizing:border-box!important;background:white!important;
   }
+  .qp-co-name{font-size:5.8mm!important;font-weight:600!important}
 
-  .qp-header{display:flex!important;flex-wrap:nowrap!important;position:relative!important}
-  .qp-title{position:absolute!important;left:0!important;right:0!important;text-align:center!important;pointer-events:none!important}
-  .qp-logo{height:4.3em!important;max-width:15.8em!important;display:flex!important}
-  .qp-logo img{height:100%!important;max-width:15.8em!important;object-fit:contain!important}
+  /* header：logo 左、meta 右、標題獨立置中一行 */
+  .qp-header{display:flex!important;flex-wrap:wrap!important;position:relative!important;align-items:center!important;}
+  .qp-logo{height:4.3em!important;max-width:15.8em!important;display:flex!important;order:0!important;flex-shrink:0!important;}
+  .qp-logo img{height:100%!important;max-width:15.8em!important;object-fit:contain!important;}
+  .qp-meta{order:1!important;flex:1!important;text-align:right!important;}
+  .qp-title{order:2!important;width:100%!important;text-align:center!important;position:static!important;pointer-events:none!important;margin:2mm 0!important;}
   .qp-names-row{display:grid!important;grid-template-columns:1fr 1fr!important}
   .qp-info{display:grid!important;grid-template-columns:1fr 1fr!important}
   .qp-bottom-row{display:flex!important;flex-direction:row!important}
