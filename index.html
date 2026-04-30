@@ -274,12 +274,14 @@ table.qi td.r{text-align:right}
     flex-shrink:0;
     align-self:flex-start;
     min-width:0;
-    max-width:46%;
+    max-width:48%;
+    display:flex;
+    justify-content:flex-end;
   }
-  .qp-totals table{width:auto;margin-left:auto} /* 靠右 */
+  .qp-totals table{width:auto}
   .qp-totals td{padding:1px 0;font-size:0.8em;white-space:nowrap}
-  .qp-totals td:first-child{text-align:left;padding-right:6px}
-  .qp-totals td:last-child{text-align:right}
+  .qp-totals td:first-child{text-align:left;padding-right:8px}
+  .qp-totals td:last-child{text-align:right;min-width:60px}
   .qp-totals .grand td{font-size:0.9em;padding-top:4px}
   /* 表格欄位換行控制 */
   table.qi th,table.qi td{white-space:normal;word-break:break-word}
@@ -431,7 +433,7 @@ table.qi td.r{text-align:right}
             <div class="qp-info">
               <div class="qp-block">
                 <h4>報價對象</h4>
-                <p id="p-cl-block" style="color:#ccc">（尚未選擇客戶）</p>
+                <div id="p-cl-block" style="color:#ccc">（尚未選擇客戶）</div>
               </div>
               <div class="qp-block" style="text-align:right">
                 <h4>出單公司</h4>
@@ -517,7 +519,7 @@ table.qi td.r{text-align:right}
             <div class="qp-info">
               <div class="qp-block">
                 <h4>報價對象</h4>
-                <p id="q2-cl-block" style="color:#ccc">（尚未選擇客戶）</p>
+                <div id="q2-cl-block" style="color:#ccc">（尚未選擇客戶）</div>
               </div>
               <div class="qp-block" style="text-align:right">
                 <h4>出單公司</h4>
