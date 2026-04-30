@@ -213,21 +213,20 @@ table.qi td.r{text-align:right}
   *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
   body>*{display:none!important}
   #print-snapshot{
-    display:flex!important;
-    align-items:center!important;
-    justify-content:center!important;
+    display:block!important;
     position:fixed!important;
     top:0!important;left:0!important;right:0!important;bottom:0!important;
     width:100%!important;height:100%!important;
     margin:0!important;padding:0!important;
     background:white!important;
     overflow:hidden!important;
+    text-align:center!important;
   }
   #print-snapshot img{
-    display:block!important;
+    display:inline-block!important;
     width:21cm!important;
     height:auto!important;
-    flex-shrink:0!important;
+    vertical-align:top!important;
   }
 }
 
