@@ -1994,22 +1994,23 @@ async function printQuote(){
 
   await Promise.all(imgs.map(img => new Promise(resolve => {
     if(!img.src){ resolve(); return; }
+    // SVG base64：用 Image 載入後畫到 canvas，指定輸出尺寸
     const tmp = new Image();
-    tmp.crossOrigin = 'anonymous';
     tmp.onload = () => {
       try {
+        const W = tmp.naturalWidth  || img.offsetWidth  || 300;
+        const H = tmp.naturalHeight || img.offsetHeight || 120;
         const cv = document.createElement('canvas');
-        const logoScale = 4;
-        cv.width = (tmp.naturalWidth || 200) * logoScale;
-        cv.height = (tmp.naturalHeight || 80) * logoScale;
-        const ctx = cv.getContext('2d');
-        ctx.scale(logoScale, logoScale);
-        ctx.drawImage(tmp, 0, 0);
-        img.src = cv.toDataURL('image/png');
+        cv.width  = W;
+        cv.height = H;
+        cv.getContext('2d').drawImage(tmp, 0, 0, W, H);
+        const png = cv.toDataURL('image/png');
+        // 只在轉換成功時才替換（避免橘色破圖）
+        if(png !== 'data:,') img.src = png;
       } catch(e) {}
       resolve();
     };
-    tmp.onerror = () => resolve();
+    tmp.onerror = () => resolve(); // 失敗保留原始 src
     tmp.src = img.src;
   })));
 
