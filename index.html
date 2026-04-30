@@ -197,9 +197,10 @@ table.qi td.r{text-align:right}
 
   body>*:not(#print-target-el){display:none!important}
 
-  /* print-target：普通 block，不用 fixed（iOS fixed+mm 會空白）*/
+  /* print-target：普通 block，position:static，iOS 相容 */
   #print-target-el{
     display:block!important;
+    position:static!important;
     width:100%!important;
     background:white!important;
     margin:0!important;padding:0!important;
@@ -357,31 +358,45 @@ table.qi td.r{text-align:right}
   .item-row input{font-size:11px;padding:3px 3px}
   /* 預覽區：全寬、可橫向捲動 */
   .preview-area{padding:8px;background:#eee;overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%}
-  /* 手機版 quote-paper：只改基準 font-size，所有內部元素自動等比縮放 */
+  /* 手機版 quote-paper */
   .quote-paper{
-    font-size:9.5px;            /* ← 唯一需要調整的值 */
+    font-size:9.5px;
     max-width:100%;
-    padding:1.8em 2em;          /* em 自動縮放 */
+    padding:1.4em 1.6em;
     box-sizing:border-box;
   }
-  /* 手機特殊：標題獨立一行 */
-  .qp-header{flex-wrap:wrap;gap:0.3em}
-  .qp-title{position:static!important;width:100%;order:-1;margin-bottom:0.4em}
-  .qp-logo,.qp-logo-placeholder{order:0}
-  .qp-meta{order:1;flex:1}
-  /* 手機特殊：地址允許在任意位置換行 */
-  .qp-co-sub{word-break:break-word;overflow-wrap:anywhere}
-  .qp-block p{word-break:break-word;overflow-wrap:anywhere}
-  /* 手機：表格不橫向捲動，讓欄寬百分比自動縮放 */
-  table.qi th,table.qi td{white-space:normal;word-break:break-word}
-  table.qi th:nth-child(1),table.qi td:nth-child(1){white-space:nowrap} /* # 不換行 */
-  table.qi th:nth-child(3),table.qi td:nth-child(3){white-space:nowrap} /* 數量不換行 */
-  table.qi th:nth-child(4),table.qi td:nth-child(4){white-space:nowrap} /* 單位不換行 */
-  table.qi th:nth-child(5),table.qi td:nth-child(5){white-space:nowrap} /* 單價不換行 */
-  table.qi th:nth-child(6),table.qi td:nth-child(6){white-space:nowrap} /* 小計不換行 */
-  /* 手機特殊：匯款上下排 */
-  .qp-bottom-row{flex-direction:column!important;gap:0.8em}
+  /* 問題1：標題放在 logo+meta 的下方（order:2 = 第三位） */
+  .qp-header{flex-wrap:wrap;gap:0.3em;align-items:flex-start}
+  .qp-logo,.qp-logo-placeholder{order:0;flex-shrink:0}
+  .qp-meta{order:1;flex:1;text-align:right}
+  .qp-title{
+    position:static!important;
+    order:2;           /* logo(0) meta(1) 之後 */
+    width:100%;
+    text-align:center;
+    margin-top:0.5em;
+    margin-bottom:0.3em;
+  }
+  /* 問題2：客戶名稱=公司名稱，統一用 1.15em */
+  .qp-co-name{font-size:1.15em!important}
+  /* 問題3：左右資訊欄字體/行距完全一致 */
+  .qp-block h4{font-size:0.76em;line-height:1.4;margin-bottom:0.3em}
+  .qp-block p{font-size:0.84em;line-height:1.5;color:#444}
+  .qp-co-sub{font-size:0.84em!important;line-height:1.5!important;color:#444!important;word-break:break-word;overflow-wrap:anywhere}
+  /* 問題4：匯款資料置左（手機版上下排時靠左） */
+  .qp-bottom-row{flex-direction:column!important;gap:0.8em;align-items:flex-start!important}
+  .qp-bank{width:100%;text-align:left}
+  .qp-bank h4{text-align:left}
+  .qp-bank p{text-align:left}
+  .qp-totals{width:100%}
   .qp-totals table{width:100%}
+  /* 表格欄位換行控制 */
+  table.qi th,table.qi td{white-space:normal;word-break:break-word}
+  table.qi th:nth-child(1),table.qi td:nth-child(1){white-space:nowrap}
+  table.qi th:nth-child(3),table.qi td:nth-child(3){white-space:nowrap}
+  table.qi th:nth-child(4),table.qi td:nth-child(4){white-space:nowrap}
+  table.qi th:nth-child(5),table.qi td:nth-child(5){white-space:nowrap}
+  table.qi th:nth-child(6),table.qi td:nth-child(6){white-space:nowrap}
   /* ── 報價單管理頁 ── */
   #tab-quotes>div{grid-template-columns:1fr!important;min-height:auto}
   #tab-quotes>div>div:first-child{border-right:none;border-bottom:1px solid var(--border)}
@@ -2013,44 +2028,41 @@ function printQuote(){
   const paper = document.querySelector('#tab-quote .quote-paper');
   if(!paper){ showToast('請先開啟報價單'); return; }
 
-  // 建立 print-target 容器
+  // clone paper
   let pt = document.getElementById('print-target-el');
   if(pt) document.body.removeChild(pt);
   pt = document.createElement('div');
   pt.id = 'print-target-el';
-  pt.className = 'print-target';
 
   const clone = paper.cloneNode(true);
 
-  // ★ 直接用 inline style 強制設定 qp-bottom-row 的排列
-  // 這樣不受任何 CSS 層疊影響
+  // 列印版：匯款置左（桌機是左右排，已有 CSS；手機是上下排，確保置左）
   const bottomRow = clone.querySelector('.qp-bottom-row');
   if(bottomRow){
-    bottomRow.style.cssText = 'display:flex!important;flex-direction:row;justify-content:space-between;align-items:flex-end;gap:16px;width:100%';
     const bank = bottomRow.querySelector('.qp-bank');
-    if(bank){
-      bank.style.cssText = 'flex:1;min-width:0;max-width:55%';
-    }
-    const totals = bottomRow.querySelector('.qp-totals');
-    if(totals){
-      totals.style.cssText = 'flex-shrink:0;min-width:180px';
-    }
+    if(bank) bank.style.textAlign = 'left';
   }
 
-  // ★ 修正 bank-block 的 color（避免 inline style color:#ccc 顯示灰色）
-  const bankBlock = clone.querySelector('#p-bank-block, #q2-bank-block');
-  if(bankBlock && bankBlock.style.color === 'rgb(204, 204, 204)'){
+  // 修正佔位文字顏色
+  const bankBlock = clone.querySelector('[id$="bank-block"]');
+  if(bankBlock && (bankBlock.style.color==='rgb(204, 204, 204)'||bankBlock.style.color==='#ccc')){
     bankBlock.style.color = '#444';
   }
 
   pt.appendChild(clone);
-  document.body.appendChild(pt);
+  // ★ 插入 body 最前面（不用 fixed，讓 @page margin 控制邊距）
+  document.body.insertBefore(pt, document.body.firstChild);
+
+  // 監聽 afterprint 事件清除（比 setTimeout 更可靠）
+  const cleanup = ()=>{
+    if(pt.parentNode) pt.parentNode.removeChild(pt);
+    window.removeEventListener('afterprint', cleanup);
+  };
+  window.addEventListener('afterprint', cleanup);
+  // 備用：2 秒後也清除
+  setTimeout(cleanup, 2000);
 
   window.print();
-
-  setTimeout(()=>{
-    if(pt.parentNode) pt.parentNode.removeChild(pt);
-  }, 1000);
 }
 </script>
 </body>
