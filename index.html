@@ -2034,7 +2034,7 @@ async function printQuote(){
   const H = Math.round(paper.scrollHeight);
 
   // Step 3: 截圖（scale = A4寬/paper寬 * 2，確保解析度）
-  const scale = Math.max(2, (794 / W) * 2);
+  const scale = 2; // 固定 2x，約 150dpi，清晰度足夠且檔案適中
 
   let canvas;
   try {
@@ -2070,7 +2070,7 @@ async function printQuote(){
   snap = document.createElement('div');
   snap.id = 'print-snapshot';
   const imgEl = document.createElement('img');
-  imgEl.src = canvas.toDataURL('image/png');
+  imgEl.src = canvas.toDataURL('image/jpeg', 0.85); // JPEG 85% 品質，檔案約為 PNG 的 30%
   snap.appendChild(imgEl);
   document.body.insertBefore(snap, document.body.firstChild);
 
