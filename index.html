@@ -219,14 +219,12 @@ table.qi td.r{text-align:right}
     width:100%!important;height:100%!important;
     margin:0!important;padding:0!important;
     background:white!important;
-    overflow:hidden!important;
-    text-align:center!important;
   }
   #print-snapshot img{
-    display:inline-block!important;
-    width:21cm!important;
+    display:block!important;
+    width:100%!important;
     height:auto!important;
-    vertical-align:top!important;
+    margin:0!important;padding:0!important;
   }
 }
 
@@ -451,7 +449,8 @@ table.qi td.r{text-align:right}
           <div style="display:flex;gap:8px;flex-wrap:wrap">
             <button class="btn btn-sm" onclick="addItem()">＋ 新增項目</button>
             <button class="btn btn-sm" onclick="sendByEmail()" title="用預設郵件程式寄送給承辦人">📧 寄出報價</button>
-            <button class="btn btn-primary btn-sm" onclick="printQuote()">🖨️ 列印 / PDF</button>
+            <button class="btn btn-primary btn-sm" onclick="printQuote()" id="btn-print-pdf">🖨️ 列印 / PDF</button>
+            <button class="btn btn-primary btn-sm" onclick="downloadImage()" id="btn-download-img" style="display:none">📥 下載圖片</button>
           </div>
         </div>
         <div class="items-editor">
@@ -1982,6 +1981,86 @@ function newQuote(){
 // ===== BOOT =====
 initApp();
 
+// 手機版：隱藏列印按鈕，顯示下載按鈕
+if(window.innerWidth <= 768){
+  const btnPrint = document.getElementById('btn-print-pdf');
+  const btnDown  = document.getElementById('btn-download-img');
+  if(btnPrint) btnPrint.style.display = 'none';
+  if(btnDown)  btnDown.style.display  = '';
+}
+
+// ===== 下載圖片（手機版）=====
+async function downloadImage(){
+  const paper = document.querySelector('#tab-quote .quote-paper');
+  if(!paper){ showToast('請先開啟報價單'); return; }
+  if(typeof html2canvas==='undefined'){ showToast('截圖模組載入中，請稍候'); return; }
+
+  showToast('準備下載中…', 10000);
+
+  const imgs = Array.from(paper.querySelectorAll('img'));
+  const origSrcs = imgs.map(img => img.src);
+  await Promise.all(imgs.map(img => new Promise(resolve => {
+    if(!img.src){ resolve(); return; }
+    const tmp = new Image();
+    tmp.onload = () => {
+      try {
+        const cv = document.createElement('canvas');
+        cv.width = tmp.naturalWidth||300; cv.height = tmp.naturalHeight||120;
+        cv.getContext('2d').drawImage(tmp, 0, 0, cv.width, cv.height);
+        const png = cv.toDataURL('image/png');
+        if(png !== 'data:,') img.src = png;
+      } catch(e){}
+      resolve();
+    };
+    tmp.onerror = () => resolve();
+    tmp.src = img.src;
+  })));
+
+  const origStyle = paper.getAttribute('style') || '';
+  const titleEl = paper.querySelector('.qp-title');
+  const headerEl = paper.querySelector('.qp-header');
+  const origTitleStyle = titleEl ? titleEl.getAttribute('style')||'' : '';
+  const origHeaderStyle = headerEl ? headerEl.getAttribute('style')||'' : '';
+
+  paper.style.cssText =
+    'font-size:13.9px!important;width:680px!important;max-width:680px!important;' +
+    'padding:36px 42px!important;box-shadow:none!important;border-radius:0!important;' +
+    'margin:0!important;box-sizing:border-box!important;position:fixed!important;' +
+    'top:0!important;left:0!important;z-index:99999!important;background:white!important;';
+  if(titleEl) titleEl.style.cssText = 'position:absolute!important;top:50%!important;transform:translateY(-50%)!important;left:0!important;right:0!important;text-align:center!important;';
+  if(headerEl) headerEl.style.cssText = 'display:flex!important;flex-wrap:nowrap!important;position:relative!important;align-items:center!important;';
+
+  await new Promise(r => setTimeout(r, 300));
+
+  let canvas;
+  try {
+    canvas = await html2canvas(paper, {
+      scale: 2, useCORS: false, allowTaint: false,
+      backgroundColor: '#ffffff', logging: false, imageTimeout: 0,
+      width: 680, height: paper.scrollHeight,
+      windowWidth: 680, x: 0, y: 0, scrollX: 0, scrollY: 0,
+    });
+  } catch(err) {
+    paper.setAttribute('style', origStyle);
+    if(titleEl) titleEl.setAttribute('style', origTitleStyle);
+    if(headerEl) headerEl.setAttribute('style', origHeaderStyle);
+    imgs.forEach((img, i) => { img.src = origSrcs[i]; });
+    showToast('下載失敗，請再試一次');
+    return;
+  }
+
+  paper.setAttribute('style', origStyle);
+  if(titleEl) titleEl.setAttribute('style', origTitleStyle);
+  if(headerEl) headerEl.setAttribute('style', origHeaderStyle);
+  imgs.forEach((img, i) => { img.src = origSrcs[i]; });
+
+  const link = document.createElement('a');
+  link.download = '報價單_' + (document.getElementById('q-num')?.value || 'quotation') + '.jpg';
+  link.href = canvas.toDataURL('image/jpeg', 0.85);
+  link.click();
+  showToast('✅ 圖片已下載！');
+}
+
 // ===== 列印：html2canvas 截圖 =====
 async function printQuote(){
   const paper = document.querySelector('#tab-quote .quote-paper');
@@ -2061,19 +2140,8 @@ async function printQuote(){
   if(snap) snap.parentNode.removeChild(snap);
   snap = document.createElement('div');
   snap.id = 'print-snapshot';
-
   const imgEl = document.createElement('img');
   imgEl.src = canvas.toDataURL('image/jpeg', 0.85);
-  if(isMobile){
-    // 手機：計算置中 margin
-    const screenW = window.screen.width;
-    const imgW = canvas.width / 2;
-    const marginLeft = Math.max(0, (screenW - imgW) / 2);
-    imgEl.style.cssText = 'display:block;width:'+imgW+'px;height:auto;margin-left:'+marginLeft+'px;';
-  } else {
-    // 電腦：width:100% 填滿
-    imgEl.style.cssText = 'display:block;width:100%;height:auto;margin:0;';
-  }
   snap.appendChild(imgEl);
   document.body.insertBefore(snap, document.body.firstChild);
 
