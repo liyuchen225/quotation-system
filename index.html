@@ -2082,12 +2082,17 @@ async function printQuote(){
   const imgEl = document.createElement('img');
   imgEl.src = canvas.toDataURL('image/jpeg', 0.85);
   // 強制寬度填滿，用 setAttribute 確保優先權最高
-  imgEl.style.display = 'block';
-  imgEl.style.width = '100%';
-  imgEl.style.maxWidth = 'none';
-  imgEl.style.height = 'auto';
-  imgEl.style.margin = '0';
-  imgEl.style.padding = '0';
+  // 計算縮放比例：A4寬(794px) / 截圖寬度
+  const printScale = 794 / canvas.width * 2; // canvas.width 已是 scale*680
+  imgEl.style.cssText = [
+    'display:block',
+    'width:'+canvas.width+'px',
+    'height:auto',
+    'margin:0',
+    'padding:0',
+    'transform-origin:top left',
+    'transform:scale('+printScale+')',
+  ].join(';');
   snap.appendChild(imgEl);
   document.body.insertBefore(snap, document.body.firstChild);
 
