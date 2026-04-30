@@ -1253,7 +1253,7 @@ function renderPreviewTo(ids, co, cl, salesIdx, contactIdx, qtItems, disc, taxRa
     const tr = document.createElement('tr');
     tr.innerHTML = `<td>${i+1}</td><td>${it.desc}</td><td class="r">${fmt(it.qty)}</td><td class="r">${it.unit||''}</td><td class="r">$${fmtPrice(it.price,forceInt)}</td><td class="r">$${fmt(amt)}</td>`;
     tbody.appendChild(tr);
-    if(it.remark){const tr2=document.createElement('tr');tr2.innerHTML=`<td></td><td colspan="5" style="font-size:10.5px;color:#666;padding-top:2px;padding-bottom:6px;border-bottom:1px solid #d0dae8">　${it.remark}</td>`;tbody.appendChild(tr2);}
+    if(it.remark){const tr2=document.createElement('tr');tr2.innerHTML=`<td></td><td colspan="5" style="font-size:10.5px;color:#666;padding-top:1px;padding-bottom:2px;line-height:1.3;border-bottom:1px solid #d0dae8">　${it.remark}</td>`;tbody.appendChild(tr2);}
   });
 
   // 小計/稅金/總計
