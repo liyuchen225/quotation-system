@@ -1999,42 +1999,41 @@ async function printQuote(){
     tmp.onload = () => {
       try {
         const cv = document.createElement('canvas');
-        cv.width = tmp.naturalWidth || 200;
-        cv.height = tmp.naturalHeight || 80;
-        cv.getContext('2d').drawImage(tmp, 0, 0);
+        // logo 用 4x 解析度確保清晰
+        const logoScale = 4;
+        cv.width = (tmp.naturalWidth || 200) * logoScale;
+        cv.height = (tmp.naturalHeight || 80) * logoScale;
+        const ctx = cv.getContext('2d');
+        ctx.scale(logoScale, logoScale);
+        ctx.drawImage(tmp, 0, 0);
         img.src = cv.toDataURL('image/png');
       } catch(e) {}
       resolve();
     };
     tmp.onerror = () => resolve();
-    // SVG base64 直接載入；外部 URL 加時間戳
     tmp.src = img.src;
   })));
 
-  // Step 1.5: 手機版→暫時套用桌機版樣式（確保截圖與桌機預覽一致）
+  // Step 1.5: 所有裝置都用桌機版樣式截圖（確保一致性）
   const isMobile = window.innerWidth <= 768;
-  let origStyle = '';
-  if(isMobile){
-    origStyle = paper.getAttribute('style') || '';
-    paper.style.cssText = [
-      origStyle,
-      'font-size:13.9px!important',
-      'width:680px!important',
-      'max-width:680px!important',
-      'padding:36px 42px!important',
-      'box-shadow:none!important',
-      'border-radius:0!important',
-    ].join(';');
-    await new Promise(r => setTimeout(r, 200));
-  }
+  const origStyle = paper.getAttribute('style') || '';
+  // 暫時套用桌機版樣式
+  paper.style.setProperty('font-size', '13.9px', 'important');
+  paper.style.setProperty('width', '680px', 'important');
+  paper.style.setProperty('max-width', '680px', 'important');
+  paper.style.setProperty('padding', '36px 42px', 'important');
+  paper.style.setProperty('box-shadow', 'none', 'important');
+  paper.style.setProperty('border-radius', '0', 'important');
+  paper.style.setProperty('margin', '0', 'important');
+  await new Promise(r => setTimeout(r, 300));
 
   // Step 2: 取得 paper 的精確尺寸和位置
-  const rect = paper.getBoundingClientRect();
-  const W = Math.round(rect.width);
-  const H = Math.round(paper.scrollHeight);
+  // Step 2: 固定桌機寬度截圖
+  const W = 680;
+  const H = paper.scrollHeight;
 
-  // Step 3: 截圖（scale = A4寬/paper寬 * 2，確保解析度）
-  const scale = 2; // 固定 2x，約 150dpi，清晰度足夠且檔案適中
+  // Step 3: 截圖
+  const scale = 2; // 固定 2x，約 150dpi
 
   let canvas;
   try {
@@ -2047,8 +2046,9 @@ async function printQuote(){
       imageTimeout: 0,
       width: W,
       height: H,
-      scrollX: -window.scrollX,
-      scrollY: -window.scrollY,
+      windowWidth: W,
+      scrollX: 0,
+      scrollY: 0,
     });
   } catch(err) {
     // 還原 img
@@ -2060,9 +2060,8 @@ async function printQuote(){
 
   // Step 4: 還原 img src 和手機版樣式
   imgs.forEach((img, i) => { img.src = origSrcs[i]; });
-  if(isMobile && origStyle !== undefined){
-    paper.setAttribute('style', origStyle);
-  }
+  // 還原原始樣式
+  paper.setAttribute('style', origStyle);
 
   // Step 5: 放入 #print-snapshot 並列印
   let snap = document.getElementById('print-snapshot');
