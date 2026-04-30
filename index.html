@@ -2015,47 +2015,69 @@ async function printQuote(){
   })));
 
   try {
-    // 截圖前：暫時套用桌機版尺寸，確保列印結果與桌機預覽完全一致
-    const origFontSize   = paper.style.fontSize;
-    const origMaxWidth   = paper.style.maxWidth;
-    const origWidth      = paper.style.width;
-    const origPadding    = paper.style.padding;
-    const origBorderRadius = paper.style.borderRadius;
-    const origBoxShadow  = paper.style.boxShadow;
+    const DESKTOP_W   = 680;
+    const DESKTOP_FS  = '13.9px';
+    const DESKTOP_PAD = '36px 42px';
 
-    // 強制套用桌機版樣式
-    paper.style.fontSize    = '13.9px';
-    paper.style.maxWidth    = '680px';
-    paper.style.width       = '680px';
-    paper.style.padding     = '36px 42px';
-    paper.style.borderRadius = '0';
-    paper.style.boxShadow   = 'none';
+    // 建立螢幕外的容器（position:absolute 讓 html2canvas 正確計算座標）
+    const offscreen = document.createElement('div');
+    offscreen.style.cssText = [
+      'position:absolute',
+      'top:0',
+      'left:0',
+      'width:' + DESKTOP_W + 'px',
+      'background:white',
+      'z-index:-9999',
+      'opacity:0',
+      'pointer-events:none',
+      'overflow:visible'
+    ].join(';');
+    document.body.appendChild(offscreen);
+
+    // clone paper 並套用桌機版樣式
+    const clone = paper.cloneNode(true);
+    clone.style.cssText = [
+      'font-size:' + DESKTOP_FS,
+      'width:' + DESKTOP_W + 'px',
+      'max-width:' + DESKTOP_W + 'px',
+      'padding:' + DESKTOP_PAD,
+      'box-shadow:none',
+      'border-radius:0',
+      'margin:0',
+      'box-sizing:border-box'
+    ].join(';');
+    offscreen.appendChild(clone);
+
+    // 把已轉成 base64 的 img src 同步到 clone
+    const cloneImgs = Array.from(clone.querySelectorAll('img'));
+    const paperImgs = Array.from(paper.querySelectorAll('img'));
+    cloneImgs.forEach((img, i) => {
+      if(paperImgs[i]) img.src = paperImgs[i].src;
+    });
 
     // 等待重繪
-    await new Promise(r => setTimeout(r, 100));
+    await new Promise(r => setTimeout(r, 150));
 
-    const paperW = 680; // 桌機版固定寬度
     const a4W = 794;
-    const printScale = Math.max(2, (a4W / paperW) * 2);
+    const printScale = Math.max(2, (a4W / DESKTOP_W) * 2);
 
-    const canvas = await html2canvas(paper, {
+    const canvas = await html2canvas(clone, {
       scale: printScale,
       useCORS: false,
       allowTaint: false,
       backgroundColor: '#ffffff',
       logging: false,
       imageTimeout: 0,
-      width: paperW,
-      height: paper.scrollHeight,
+      width: DESKTOP_W,
+      height: clone.scrollHeight,
+      x: 0,
+      y: 0,
+      scrollX: 0,
+      scrollY: 0,
     });
 
-    // 還原原始樣式
-    paper.style.fontSize    = origFontSize;
-    paper.style.maxWidth    = origMaxWidth;
-    paper.style.width       = origWidth;
-    paper.style.padding     = origPadding;
-    paper.style.borderRadius = origBorderRadius;
-    paper.style.boxShadow   = origBoxShadow;
+    // 清除 offscreen 容器
+    document.body.removeChild(offscreen);
 
     // 還原 img src 和 paper 樣式（確保 catch 也能還原）
     imgs.forEach((img, i) => { img.src = origSrcs[i]; });
@@ -2079,15 +2101,9 @@ async function printQuote(){
 
   } catch(err) {
     imgs.forEach((img, i) => { img.src = origSrcs[i]; });
-    // 確保 paper 樣式被還原
-    try {
-      paper.style.fontSize    = origFontSize    || '';
-      paper.style.maxWidth    = origMaxWidth    || '';
-      paper.style.width       = origWidth       || '';
-      paper.style.padding     = origPadding     || '';
-      paper.style.borderRadius = origBorderRadius || '';
-      paper.style.boxShadow   = origBoxShadow   || '';
-    } catch(e2) {}
+    // 清除 offscreen 容器
+    const _off = document.querySelector('div[style*="left:-9999px"]');
+    if(_off) document.body.removeChild(_off);
     showToast('列印失敗，請再試一次');
     console.error(err);
   }
