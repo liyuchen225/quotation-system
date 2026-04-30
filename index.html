@@ -209,24 +209,41 @@ table.qi td.r{text-align:right}
 @media print{
   @page{size:A4 portrait;margin:0}
   *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
-  body,html{margin:0!important;padding:0!important;background:white!important}
-  body>*{display:none!important}
-  #print-snapshot{
-    display:block!important;
-    position:fixed!important;
-    top:0!important;left:0!important;right:0!important;bottom:0!important;
-    width:210mm!important;
-    height:297mm!important;
-    margin:0!important;padding:0!important;
-    background:white!important;
-    overflow:hidden!important;
+
+  .tabnav,#quote-save-bar,.quote-sidebar,.toolbar,.items-editor,
+  #quote-empty-state,#tab-quotes,#tab-clients,#tab-companies
+  {display:none!important}
+
+  html,body,.app,#tab-quote,#quote-editor,.quote-main,.preview-area{
+    display:block!important;margin:0!important;padding:0!important;
+    background:white!important;border:none!important;box-shadow:none!important;
+    border-radius:0!important;min-height:0!important;overflow:visible!important;
+    width:100%!important;max-width:100%!important;
   }
-  #print-snapshot img{
-    display:block!important;
-    width:210mm!important;
-    height:auto!important;
-    margin:0!important;padding:0!important;
+
+  .quote-paper{
+    font-size:13.9px!important;width:100%!important;max-width:100%!important;
+    padding:11mm 13mm!important;box-shadow:none!important;border-radius:0!important;
+    margin:0!important;box-sizing:border-box!important;background:white!important;
   }
+
+  .qp-header{display:flex!important;flex-wrap:nowrap!important;position:relative!important}
+  .qp-title{position:absolute!important;left:0!important;right:0!important;text-align:center!important;pointer-events:none!important}
+  .qp-logo{height:4.3em!important;max-width:15.8em!important;display:flex!important}
+  .qp-logo img{height:100%!important;max-width:15.8em!important;object-fit:contain!important}
+  .qp-names-row{display:grid!important;grid-template-columns:1fr 1fr!important}
+  .qp-info{display:grid!important;grid-template-columns:1fr 1fr!important}
+  .qp-bottom-row{display:flex!important;flex-direction:row!important}
+  .qp-bank-cell{flex:1!important;min-width:0!important}
+  .qp-totals-cell{flex:0 0 50%!important;display:flex!important;justify-content:flex-end!important}
+  .qp-signer{display:flex!important}
+  .qp-footer{display:flex!important;justify-content:space-between!important}
+  table.qi{width:100%!important;table-layout:fixed!important}
+  table.qi thead tr{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+  .qp-notes{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+  .addr-br{display:none!important}
+  .qp-co-name{font-size:16px!important;font-weight:600!important}
+  .qp-detail-cell{font-size:0.84em!important;color:#444!important;line-height:1.6!important}
 }
 
 /* iPad */
@@ -327,7 +344,6 @@ table.qi td.r{text-align:right}
   .qli-num{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0}
 }
 </style>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body>
 <div class="app">
@@ -1970,97 +1986,23 @@ function newQuote(){
 // ===== BOOT =====
 initApp();
 
-// ===== 列印：html2canvas 截圖，桌機版樣式，手機/電腦完全一致 =====
-async function printQuote(){
+// ===== 列印：直接列印原始 DOM，@media print 控制樣式 =====
+function printQuote(){
   const paper = document.querySelector('#tab-quote .quote-paper');
   if(!paper){ showToast('請先開啟報價單'); return; }
-  if(typeof html2canvas==='undefined'){ showToast('截圖模組載入中，請稍候'); return; }
 
-  showToast('準備列印中…', 10000);
+  // 確保 tab-quote 是顯示狀態
+  const tabEl    = ge('tab-quote');
+  const editorEl = ge('quote-editor');
+  const wasTabHidden    = tabEl && !tabEl.classList.contains('active');
+  const wasEditorHidden = editorEl && editorEl.style.display === 'none';
+  if(wasTabHidden)    tabEl.classList.add('active');
+  if(wasEditorHidden) editorEl.style.display = 'grid';
 
-  // 1. 注入暫時桌機版 style
-  const tmpStyle = document.createElement('style');
-  tmpStyle.id = '__print_tmp__';
-  tmpStyle.textContent =
-    '#tab-quote .quote-paper{' +
-    'font-size:13.9px!important;width:680px!important;max-width:680px!important;' +
-    'padding:36px 42px!important;box-shadow:none!important;border-radius:0!important;' +
-    'margin:0!important;box-sizing:border-box!important;}' +
-    '#tab-quote .quote-paper .qp-header{flex-wrap:nowrap!important;position:relative!important;}' +
-    '#tab-quote .quote-paper .qp-title{position:absolute!important;left:0!important;right:0!important;text-align:center!important;}' +
-    '#tab-quote .quote-paper .qp-logo{height:4.3em!important;}' +
-    '#tab-quote .quote-paper .qp-logo img{height:100%!important;max-width:15.8em!important;}';
-  document.head.appendChild(tmpStyle);
-  await new Promise(r=>setTimeout(r,300));
+  window.print();
 
-  // 2. img 轉 PNG base64（含 SVG）
-  const imgs = Array.from(paper.querySelectorAll('img'));
-  const origSrcs = imgs.map(img=>img.src);
-  await Promise.all(imgs.map(img=>new Promise(resolve=>{
-    if(!img.src){resolve();return;}
-    const tmp=new Image();
-    tmp.crossOrigin='anonymous';
-    tmp.onload=()=>{
-      try{
-        const cv=document.createElement('canvas');
-        cv.width=tmp.naturalWidth||200;cv.height=tmp.naturalHeight||80;
-        cv.getContext('2d').drawImage(tmp,0,0);
-        img.src=cv.toDataURL('image/png');
-      }catch(e){}
-      resolve();
-    };
-    tmp.onerror=()=>resolve();
-    tmp.src=img.src.startsWith('data:')?img.src:img.src+(img.src.includes('?')?'&':'?')+'_t='+Date.now();
-  })));
-
-  const cleanup=()=>{
-    imgs.forEach((img,i)=>{img.src=origSrcs[i];});
-    const ts=document.getElementById('__print_tmp__');
-    if(ts)ts.remove();
-  };
-
-  try{
-    const DESKTOP_W=680;
-    const printScale=Math.max(2,(794/DESKTOP_W)*2);
-
-    // 直接截 paper 元素（html2canvas 自動處理元素位置）
-    // 不指定 x/y/scroll，讓 html2canvas 自動對齊元素
-    const canvas=await html2canvas(paper,{
-      scale:printScale,
-      useCORS:false,
-      allowTaint:false,
-      backgroundColor:'#ffffff',
-      logging:false,
-      imageTimeout:0,
-    });
-
-    cleanup();
-
-    let snap=document.getElementById('print-snapshot');
-    if(snap)snap.parentNode.removeChild(snap);
-    snap=document.createElement('div');
-    snap.id='print-snapshot';
-    snap.style.cssText='position:fixed;top:0;left:0;right:0;bottom:0;margin:0;padding:0;background:white;z-index:99999;overflow:hidden';
-    const imgEl=document.createElement('img');
-    imgEl.src=canvas.toDataURL('image/png');
-    imgEl.style.cssText='display:block;width:100%;height:auto;margin:0;padding:0';
-    snap.appendChild(imgEl);
-    document.body.insertBefore(snap,document.body.firstChild);
-
-    await new Promise(r=>setTimeout(r,200));
-    window.print();
-
-  }catch(err){
-    cleanup();
-    showToast('列印失敗，請再試一次');
-    console.error(err);
-  }
-
-  setTimeout(()=>{
-    const snap=document.getElementById('print-snapshot');
-    if(snap&&snap.parentNode)snap.parentNode.removeChild(snap);
-    cleanup();
-  },2000);
+  if(wasTabHidden)    tabEl.classList.remove('active');
+  if(wasEditorHidden) editorEl.style.display = 'none';
 }
 
 </script>
