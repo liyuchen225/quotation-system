@@ -1994,20 +1994,23 @@ async function printQuote(){
 
   await Promise.all(imgs.map(img => new Promise(resolve => {
     if(!img.src){ resolve(); return; }
+    // 若已是 PNG base64，直接使用
+    if(img.src.startsWith('data:image/png')){ resolve(); return; }
     const tmp = new Image();
-    tmp.crossOrigin = 'anonymous';
+    // SVG 不加 crossOrigin，避免 CORS 錯誤
+    if(!img.src.startsWith('data:')) tmp.crossOrigin = 'anonymous';
     tmp.onload = () => {
       try {
         const cv = document.createElement('canvas');
-        // logo 用 4x 解析度確保清晰
-        const logoScale = 4;
-        cv.width = (tmp.naturalWidth || 200) * logoScale;
-        cv.height = (tmp.naturalHeight || 80) * logoScale;
+        // 用顯示尺寸（不放大），讓 html2canvas 的 scale 負責解析度
+        cv.width = tmp.naturalWidth || img.offsetWidth || 200;
+        cv.height = tmp.naturalHeight || img.offsetHeight || 80;
         const ctx = cv.getContext('2d');
-        ctx.scale(logoScale, logoScale);
-        ctx.drawImage(tmp, 0, 0);
+        ctx.drawImage(tmp, 0, 0, cv.width, cv.height);
         img.src = cv.toDataURL('image/png');
-      } catch(e) {}
+      } catch(e) {
+        // 轉換失敗：保持原始 src，讓 html2canvas 嘗試
+      }
       resolve();
     };
     tmp.onerror = () => resolve();
