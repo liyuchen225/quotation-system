@@ -213,32 +213,31 @@ table.qi td.r{text-align:right}
   *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
   body>*{display:none!important}
   #print-snapshot{
-    display:block!important;
-    width:100%!important;
+    display:flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    position:fixed!important;
+    top:0!important;left:0!important;right:0!important;bottom:0!important;
+    width:100%!important;height:100%!important;
     margin:0!important;padding:0!important;
     background:white!important;
+    overflow:hidden!important;
   }
   #print-snapshot img{
     display:block!important;
-    width:100%!important;
-    max-width:100%!important;
+    width:21cm!important;
     height:auto!important;
-    margin:0 auto!important;
+    flex-shrink:0!important;
   }
 }
 
-/* 手機列印：圖片置中填滿 */
+/* 手機列印：只調整 font-size 讓內容縮小以符合一頁 */
 @media print and (max-width:768px){
-  @page{margin:1cm}
-  #print-snapshot{
-    display:block!important;
-    width:100%!important;
+  .quote-paper{
+    font-size:2.8mm!important;
+    padding:4mm 5mm!important;
   }
-  #print-snapshot img{
-    width:100%!important;
-    max-width:100%!important;
-    margin:0 auto!important;
-  }
+  .qp-co-name{font-size:3.2mm!important;}
 }
 
 /* ── 手機列印：只覆寫字體和 padding ── */
@@ -1984,7 +1983,7 @@ function newQuote(){
 // ===== BOOT =====
 initApp();
 
-// ===== 列印：截桌機版報價單，width:100% 放入列印框 =====
+// ===== 列印：html2canvas 截圖 =====
 async function printQuote(){
   const paper = document.querySelector('#tab-quote .quote-paper');
   if(!paper){ showToast('請先開啟報價單'); return; }
@@ -1992,7 +1991,7 @@ async function printQuote(){
 
   showToast('準備列印中…', 10000);
 
-  // Step 1: img 轉 PNG base64（含 SVG logo）
+  // img 轉 PNG base64
   const imgs = Array.from(paper.querySelectorAll('img'));
   const origSrcs = imgs.map(img => img.src);
   await Promise.all(imgs.map(img => new Promise(resolve => {
@@ -2001,8 +2000,7 @@ async function printQuote(){
     tmp.onload = () => {
       try {
         const cv = document.createElement('canvas');
-        cv.width = tmp.naturalWidth||300;
-        cv.height = tmp.naturalHeight||120;
+        cv.width = tmp.naturalWidth||300; cv.height = tmp.naturalHeight||120;
         cv.getContext('2d').drawImage(tmp, 0, 0, cv.width, cv.height);
         const png = cv.toDataURL('image/png');
         if(png !== 'data:,') img.src = png;
@@ -2013,36 +2011,23 @@ async function printQuote(){
     tmp.src = img.src;
   })));
 
-  // Step 2: 暫時把 paper 強制改成桌機版 680px
-  // 用 inline style 覆蓋所有 CSS
+  // 注入桌機版 style
   const origStyle = paper.getAttribute('style') || '';
-  paper.style.cssText =
-    'font-size:13.9px!important;' +
-    'width:680px!important;' +
-    'max-width:680px!important;' +
-    'padding:36px 42px!important;' +
-    'box-shadow:none!important;' +
-    'border-radius:0!important;' +
-    'margin:0!important;' +
-    'box-sizing:border-box!important;' +
-    'position:fixed!important;' +
-    'top:0!important;' +
-    'left:0!important;' +
-    'z-index:99999!important;' +
-    'background:white!important;';
-
-  // 同時修正 header 內的 qp-title（手機版是 static，桌機版是 absolute）
   const titleEl = paper.querySelector('.qp-title');
-  const origTitleStyle = titleEl ? titleEl.getAttribute('style')||'' : '';
-  if(titleEl) titleEl.style.cssText = 'position:absolute!important;top:50%!important;transform:translateY(-50%)!important;left:0!important;right:0!important;text-align:center!important;';
   const headerEl = paper.querySelector('.qp-header');
+  const origTitleStyle = titleEl ? titleEl.getAttribute('style')||'' : '';
   const origHeaderStyle = headerEl ? headerEl.getAttribute('style')||'' : '';
+
+  paper.style.cssText =
+    'font-size:13.9px!important;width:680px!important;max-width:680px!important;' +
+    'padding:36px 42px!important;box-shadow:none!important;border-radius:0!important;' +
+    'margin:0!important;box-sizing:border-box!important;position:fixed!important;' +
+    'top:0!important;left:0!important;z-index:99999!important;background:white!important;';
+  if(titleEl) titleEl.style.cssText = 'position:absolute!important;top:50%!important;transform:translateY(-50%)!important;left:0!important;right:0!important;text-align:center!important;';
   if(headerEl) headerEl.style.cssText = 'display:flex!important;flex-wrap:nowrap!important;position:relative!important;align-items:center!important;';
 
-  // 等瀏覽器重繪
   await new Promise(r => setTimeout(r, 300));
 
-  // Step 3: 截圖
   let canvas;
   try {
     canvas = await html2canvas(paper, {
@@ -2052,40 +2037,33 @@ async function printQuote(){
       backgroundColor: '#ffffff',
       logging: false,
       imageTimeout: 0,
-      x: 0,
-      y: 0,
-      scrollX: 0,
-      scrollY: 0,
       width: 680,
       height: paper.scrollHeight,
       windowWidth: 680,
+      x: 0, y: 0, scrollX: 0, scrollY: 0,
     });
   } catch(err) {
-    // 還原
-    imgs.forEach((img, i) => { img.src = origSrcs[i]; });
     paper.setAttribute('style', origStyle);
     if(titleEl) titleEl.setAttribute('style', origTitleStyle);
     if(headerEl) headerEl.setAttribute('style', origHeaderStyle);
+    imgs.forEach((img, i) => { img.src = origSrcs[i]; });
     showToast('列印失敗，請再試一次');
     return;
   }
 
-  // Step 4: 還原所有樣式
-  imgs.forEach((img, i) => { img.src = origSrcs[i]; });
+  // 還原
   paper.setAttribute('style', origStyle);
   if(titleEl) titleEl.setAttribute('style', origTitleStyle);
   if(headerEl) headerEl.setAttribute('style', origHeaderStyle);
+  imgs.forEach((img, i) => { img.src = origSrcs[i]; });
 
-  // Step 5: 放入 #print-snapshot，width:100% 填滿 A4
+  // 放入 print-snapshot
   let snap = document.getElementById('print-snapshot');
   if(snap) snap.parentNode.removeChild(snap);
   snap = document.createElement('div');
   snap.id = 'print-snapshot';
-  snap.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;margin:0;padding:0;background:white;z-index:99998';
   const imgEl = document.createElement('img');
   imgEl.src = canvas.toDataURL('image/jpeg', 0.85);
-  // 強制寬度填滿，用 setAttribute 確保優先權最高
-  imgEl.style.cssText = 'display:block;width:100%;height:auto;margin:0 auto;';
   snap.appendChild(imgEl);
   document.body.insertBefore(snap, document.body.firstChild);
 
