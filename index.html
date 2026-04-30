@@ -1995,13 +1995,22 @@ async function printQuote(){
 
   try {
     // 截圖 quote-paper（scale:2 = Retina 清晰度）
+    // 計算 A4 寬度與 paper 的比例，確保截圖解析度與 A4 一致
+    // A4 @96dpi = 794px，paper 實際寬度可能是 680px
+    // 需要的 scale = A4寬 / paper寬 * 2（Retina）
+    const paperW = paper.offsetWidth;
+    const a4W = 794; // @96dpi A4 寬度
+    const printScale = Math.max(2, (a4W / paperW) * 2);
+
     const canvas = await html2canvas(paper, {
-      scale: 2,
+      scale: printScale,
       useCORS: false,
       allowTaint: false,
       backgroundColor: '#ffffff',
       logging: false,
       imageTimeout: 0,
+      width: paperW,
+      height: paper.offsetHeight,
     });
 
     // 還原 img src
