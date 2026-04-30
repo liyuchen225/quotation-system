@@ -195,9 +195,10 @@ table.qi td.r{text-align:right}
   @page{size:A4 portrait;margin:11mm 13mm}
   *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
 
-  body>*:not(#print-target-el){display:none!important}
+  /* body.is-printing 時：隱藏所有元素，只顯示 #print-target-el */
+  body.is-printing>*{display:none!important}
+  body.is-printing>#print-target-el{display:block!important}
 
-  /* print-target：普通 block，position:static，iOS 相容 */
   #print-target-el{
     display:block!important;
     position:static!important;
@@ -377,8 +378,8 @@ table.qi td.r{text-align:right}
     margin-top:0.5em;
     margin-bottom:0.3em;
   }
-  /* 問題2：客戶名稱=公司名稱，統一用 1.15em */
-  .qp-co-name{font-size:1.15em!important}
+  /* 公司名稱=客戶名稱，統一用 1.15em */
+  .qp-co-name{font-size:1.15em!important;font-weight:600!important}
   /* 問題3：左右資訊欄字體/行距完全一致 */
   .qp-block h4{font-size:0.76em;line-height:1.4;margin-bottom:0.3em}
   .qp-block p{font-size:0.84em;line-height:1.5;color:#444}
@@ -388,8 +389,9 @@ table.qi td.r{text-align:right}
   .qp-bank{width:100%;text-align:left}
   .qp-bank h4{text-align:left}
   .qp-bank p{text-align:left}
-  .qp-totals{width:100%}
-  .qp-totals table{width:100%}
+  /* 總金額：靠右，不拉全寬 */
+  .qp-totals{width:auto;align-self:flex-end;min-width:55%}
+  .qp-totals table{width:100%;min-width:160px}
   /* 表格欄位換行控制 */
   table.qi th,table.qi td{white-space:normal;word-break:break-word}
   table.qi th:nth-child(1),table.qi td:nth-child(1){white-space:nowrap}
@@ -1275,7 +1277,7 @@ function renderPreviewTo(ids, co, cl, salesIdx, contactIdx, qtItems, disc, taxRa
   // 客戶
   let clHtml='（尚未選擇客戶）';
   if(cl){
-    clHtml=`<span style="font-size:1.15em;font-weight:600;color:${brandColor}">${cl.name}</span>`;
+    clHtml=`<span style="font-size:1.15em;font-weight:600;color:${brandColor};display:block">${cl.name}</span>`;
     if(cl.zip||cl.addr){
       const rawAddr=cl.addr||'';
       // 在「區」後插入換行
@@ -2050,19 +2052,21 @@ function printQuote(){
   }
 
   pt.appendChild(clone);
-  // ★ 插入 body 最前面（不用 fixed，讓 @page margin 控制邊距）
-  document.body.insertBefore(pt, document.body.firstChild);
+  document.body.appendChild(pt);
 
-  // 監聽 afterprint 事件清除（比 setTimeout 更可靠）
+  // 加上 class → @media print 的規則生效 → 隱藏其他，顯示 print-target-el
+  document.body.classList.add('is-printing');
+
   const cleanup = ()=>{
+    document.body.classList.remove('is-printing');
     if(pt.parentNode) pt.parentNode.removeChild(pt);
     window.removeEventListener('afterprint', cleanup);
   };
   window.addEventListener('afterprint', cleanup);
-  // 備用：2 秒後也清除
-  setTimeout(cleanup, 2000);
+  setTimeout(cleanup, 3000);
 
-  window.print();
+  // 稍微延遲確保 DOM 已渲染
+  setTimeout(()=>{ window.print(); }, 80);
 }
 </script>
 </body>
