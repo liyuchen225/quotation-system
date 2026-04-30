@@ -1159,9 +1159,15 @@ function addItem(){
 function gv(id){return ge(id)?.value||'';}
 function ge(id){return document.getElementById(id);}
 function fmt(n){return Math.round(n).toLocaleString('zh-TW');}
-function fmtPrice(n,forceInt=false){
-  if(forceInt)return Math.round(n).toLocaleString('zh-TW');
-  return n%1===0?n.toLocaleString('zh-TW'):n.toFixed(2);
+function fmtPrice(n, forceInt=false){
+  if(forceInt) return Math.round(n).toLocaleString('zh-TW');
+  if(n%1===0) return n.toLocaleString('zh-TW');
+  // 最多4位小數，去除尾零
+  const s = parseFloat(n.toFixed(4)).toString();
+  // 加千分位
+  const parts = s.split('.');
+  parts[0] = parseInt(parts[0]).toLocaleString('zh-TW');
+  return parts.join('.');
 }
 
 // ===== 共用渲染核心 =====
@@ -1173,7 +1179,8 @@ function renderPreviewTo(ids, co, cl, salesIdx, contactIdx, qtItems, disc, taxRa
   const brandColor = co?.brandColor || '#185FA5';
   const invoiceSetting = co?.invoice || 'yes';
   const taxTypeSetting = cl?.taxType || 'extra';
-  const forceInt = taxTypeSetting === 'included';
+  // 公家單位：單價允許最多4位小數，小計/總金額一律取整數（fmt本身已是整數）
+  const forceInt = false; // 單價永遠允許小數
 
   // 品牌色套用
   const titleEl = ge(ids.title); if(titleEl) titleEl.style.color = brandColor;
