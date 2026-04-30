@@ -2061,8 +2061,19 @@ async function printQuote(){
   if(snap) snap.parentNode.removeChild(snap);
   snap = document.createElement('div');
   snap.id = 'print-snapshot';
+
   const imgEl = document.createElement('img');
   imgEl.src = canvas.toDataURL('image/jpeg', 0.85);
+  if(isMobile){
+    // 手機：計算置中 margin
+    const screenW = window.screen.width;
+    const imgW = canvas.width / 2;
+    const marginLeft = Math.max(0, (screenW - imgW) / 2);
+    imgEl.style.cssText = 'display:block;width:'+imgW+'px;height:auto;margin-left:'+marginLeft+'px;';
+  } else {
+    // 電腦：width:100% 填滿
+    imgEl.style.cssText = 'display:block;width:100%;height:auto;margin:0;';
+  }
   snap.appendChild(imgEl);
   document.body.insertBefore(snap, document.body.firstChild);
 
