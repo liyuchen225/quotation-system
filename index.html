@@ -2010,12 +2010,27 @@ async function printQuote(){
   })));
 
   try {
-    // 截圖 quote-paper（scale:2 = Retina 清晰度）
-    // 計算 A4 寬度與 paper 的比例，確保截圖解析度與 A4 一致
-    // A4 @96dpi = 794px，paper 實際寬度可能是 680px
-    // 需要的 scale = A4寬 / paper寬 * 2（Retina）
-    const paperW = paper.offsetWidth;
-    const a4W = 794; // @96dpi A4 寬度
+    // 截圖前：暫時套用桌機版尺寸，確保列印結果與桌機預覽完全一致
+    const origFontSize   = paper.style.fontSize;
+    const origMaxWidth   = paper.style.maxWidth;
+    const origWidth      = paper.style.width;
+    const origPadding    = paper.style.padding;
+    const origBorderRadius = paper.style.borderRadius;
+    const origBoxShadow  = paper.style.boxShadow;
+
+    // 強制套用桌機版樣式
+    paper.style.fontSize    = '13.9px';
+    paper.style.maxWidth    = '680px';
+    paper.style.width       = '680px';
+    paper.style.padding     = '36px 42px';
+    paper.style.borderRadius = '0';
+    paper.style.boxShadow   = 'none';
+
+    // 等待重繪
+    await new Promise(r => setTimeout(r, 100));
+
+    const paperW = 680; // 桌機版固定寬度
+    const a4W = 794;
     const printScale = Math.max(2, (a4W / paperW) * 2);
 
     const canvas = await html2canvas(paper, {
@@ -2026,10 +2041,18 @@ async function printQuote(){
       logging: false,
       imageTimeout: 0,
       width: paperW,
-      height: paper.offsetHeight,
+      height: paper.scrollHeight,
     });
 
-    // 還原 img src
+    // 還原原始樣式
+    paper.style.fontSize    = origFontSize;
+    paper.style.maxWidth    = origMaxWidth;
+    paper.style.width       = origWidth;
+    paper.style.padding     = origPadding;
+    paper.style.borderRadius = origBorderRadius;
+    paper.style.boxShadow   = origBoxShadow;
+
+    // 還原 img src 和 paper 樣式（確保 catch 也能還原）
     imgs.forEach((img, i) => { img.src = origSrcs[i]; });
 
     // 建立 print-snapshot div，放入截圖
@@ -2048,6 +2071,15 @@ async function printQuote(){
 
   } catch(err) {
     imgs.forEach((img, i) => { img.src = origSrcs[i]; });
+    // 確保 paper 樣式被還原
+    try {
+      paper.style.fontSize    = origFontSize    || '';
+      paper.style.maxWidth    = origMaxWidth    || '';
+      paper.style.width       = origWidth       || '';
+      paper.style.padding     = origPadding     || '';
+      paper.style.borderRadius = origBorderRadius || '';
+      paper.style.boxShadow   = origBoxShadow   || '';
+    } catch(e2) {}
     showToast('列印失敗，請再試一次');
     console.error(err);
   }
