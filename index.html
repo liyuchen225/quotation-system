@@ -1980,18 +1980,15 @@ function newQuote(){
 // ===== BOOT =====
 initApp();
 
-// ===== 列印：開新視窗，固定桌機版，手機/電腦完全一致 =====
+// ===== 列印：html2canvas 截圖，width:100% 填滿 A4 =====
 async function printQuote(){
   const paper = document.querySelector('#tab-quote .quote-paper');
   if(!paper){ showToast('請先開啟報價單'); return; }
+  if(typeof html2canvas==='undefined'){ showToast('截圖模組載入中，請稍候'); return; }
 
-  showToast('準備列印中…', 5000);
+  showToast('準備列印中…', 10000);
 
-  // 取得所有 CSS
-  const allCSS = Array.from(document.querySelectorAll('style'))
-    .map(s => s.textContent).join('\n');
-
-  // 把 img 轉成 base64（含 SVG logo）
+  // img 轉 PNG base64（含 SVG logo）
   const imgs = Array.from(paper.querySelectorAll('img'));
   const origSrcs = imgs.map(img => img.src);
   await Promise.all(imgs.map(img => new Promise(resolve => {
@@ -1999,83 +1996,74 @@ async function printQuote(){
     const tmp = new Image();
     tmp.onload = () => {
       try {
-        const W = tmp.naturalWidth  || img.offsetWidth  || 300;
-        const H = tmp.naturalHeight || img.offsetHeight || 120;
         const cv = document.createElement('canvas');
-        cv.width = W; cv.height = H;
-        cv.getContext('2d').drawImage(tmp, 0, 0, W, H);
+        cv.width = tmp.naturalWidth||300; cv.height = tmp.naturalHeight||120;
+        cv.getContext('2d').drawImage(tmp, 0, 0, cv.width, cv.height);
         const png = cv.toDataURL('image/png');
         if(png !== 'data:,') img.src = png;
-      } catch(e) {}
+      } catch(e){}
       resolve();
     };
     tmp.onerror = () => resolve();
     tmp.src = img.src;
   })));
 
-  // 取得 paper HTML（已含 base64 圖片）
-  const paperHTML = paper.outerHTML;
+  // 注入桌機版 style（覆蓋手機版 CSS）
+  const tmpStyle = document.createElement('style');
+  tmpStyle.id = '__print_override__';
+  tmpStyle.textContent =
+    '#tab-quote .quote-paper{font-size:13.9px!important;padding:36px 42px!important;'+
+    'box-shadow:none!important;border-radius:0!important;margin:0!important;}'+
+    '#tab-quote .quote-paper .qp-header{display:flex!important;flex-wrap:nowrap!important;position:relative!important;align-items:center!important;}'+
+    '#tab-quote .quote-paper .qp-title{position:absolute!important;top:50%!important;transform:translateY(-50%)!important;left:0!important;right:0!important;text-align:center!important;width:auto!important;order:0!important;margin:0!important;}'+
+    '#tab-quote .quote-paper .qp-names-row{display:grid!important;grid-template-columns:1fr 1fr!important;}'+
+    '#tab-quote .quote-paper .qp-info{display:grid!important;grid-template-columns:1fr 1fr!important;}'+
+    '#tab-quote .quote-paper .qp-bottom-row{display:flex!important;flex-direction:row!important;}';
+  document.head.appendChild(tmpStyle);
+  await new Promise(r => setTimeout(r, 300));
 
-  // 還原 img src
-  imgs.forEach((img, i) => { img.src = origSrcs[i]; });
-
-  // 組合列印頁面：固定桌機版樣式
-  const html = `<!DOCTYPE html>
-<html lang="zh-TW">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<style>
-${allCSS}
-@page{size:A4 portrait;margin:0}
-*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;box-sizing:border-box}
-html,body{margin:0;padding:0;background:white;}
-/* 強制桌機版樣式 */
-.quote-paper{
-  font-size:13.9px!important;
-  width:680px!important;
-  max-width:680px!important;
-  padding:36px 42px!important;
-  box-shadow:none!important;
-  border-radius:0!important;
-  margin:0 auto!important;
-}
-.qp-header{display:flex!important;flex-wrap:nowrap!important;position:relative!important;align-items:center!important;}
-.qp-title{position:absolute!important;top:50%!important;transform:translateY(-50%)!important;left:0!important;right:0!important;text-align:center!important;}
-.qp-names-row{display:grid!important;grid-template-columns:1fr 1fr!important;}
-.qp-info{display:grid!important;grid-template-columns:1fr 1fr!important;}
-.qp-bottom-row{display:flex!important;flex-direction:row!important;}
-.qp-bank-cell{flex:1!important;min-width:0!important;}
-.qp-totals-cell{flex:0 0 50%!important;display:flex!important;justify-content:flex-end!important;}
-.qp-signer{display:flex!important;}
-.qp-footer{display:flex!important;justify-content:space-between!important;}
-table.qi{width:100%!important;table-layout:fixed!important;}
-.addr-br{display:none!important;}
-@media print{
-  body{margin:0!important;padding:0!important;}
-  .quote-paper{margin:0 auto!important;}
-}
-</style>
-</head>
-<body>
-${paperHTML}
-<script>
-window.onload = function(){
-  window.focus();
-  window.print();
-};
-<\/script>
-</body>
-</html>`;
-
-  // 用 Blob URL 開新視窗（iOS Safari 支援）
-  const blob = new Blob([html], {type:'text/html;charset=utf-8'});
-  const url = URL.createObjectURL(blob);
-  const win = window.open(url, '_blank');
-  if(!win){
-    showToast('⚠️ 請允許彈出視窗後再試', 4000);
+  let canvas;
+  try {
+    // 直接截 paper 元素，width:100% 讓圖片填滿 A4
+    canvas = await html2canvas(paper, {
+      scale: 2,
+      useCORS: false,
+      allowTaint: false,
+      backgroundColor: '#ffffff',
+      logging: false,
+      imageTimeout: 0,
+    });
+  } catch(err) {
+    imgs.forEach((img, i) => { img.src = origSrcs[i]; });
+    const ts = document.getElementById('__print_override__');
+    if(ts) ts.remove();
+    showToast('列印失敗，請再試一次');
+    return;
   }
-  setTimeout(() => URL.revokeObjectURL(url), 60000);
+
+  // 還原
+  imgs.forEach((img, i) => { img.src = origSrcs[i]; });
+  const ts = document.getElementById('__print_override__');
+  if(ts) ts.remove();
+
+  // 放入 #print-snapshot，width:100% 自動填滿 A4
+  let snap = document.getElementById('print-snapshot');
+  if(snap) snap.parentNode.removeChild(snap);
+  snap = document.createElement('div');
+  snap.id = 'print-snapshot';
+  const imgEl = document.createElement('img');
+  imgEl.src = canvas.toDataURL('image/jpeg', 0.85);
+  imgEl.style.cssText = 'display:block;width:100%;height:auto;margin:0;padding:0';
+  snap.appendChild(imgEl);
+  document.body.insertBefore(snap, document.body.firstChild);
+
+  await new Promise(r => setTimeout(r, 300));
+  window.print();
+
+  setTimeout(() => {
+    const s = document.getElementById('print-snapshot');
+    if(s && s.parentNode) s.parentNode.removeChild(s);
+  }, 2000);
 }
 
 </script>
