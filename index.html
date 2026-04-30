@@ -95,6 +95,8 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#f5f5f5;min-heigh
 .del-btn{width:24px;height:24px;border:none;background:transparent;color:#bbb;cursor:pointer;font-size:17px;border-radius:4px;display:flex;align-items:center;justify-content:center}
 .del-btn:hover{background:var(--red-lt);color:var(--red)}
 .preview-area{flex:1;padding:20px;overflow:auto;background:#e8e8e8}
+/* quotes-preview 與報價單頁 preview-area 完全一致 */
+#quotes-preview.preview-area{padding:20px;background:#e8e8e8}
 
 /* QUOTE PAPER - em 單位設計，只改 font-size 即可等比縮放 */
 /* 桌機基準：16px（em base） */
@@ -344,8 +346,9 @@ table.qi td.r{text-align:right}
   #tab-quotes>div{grid-template-columns:1fr!important;min-height:auto}
   #tab-quotes>div>div:first-child{border-right:none;border-bottom:1px solid var(--border)}
   #quotes-list{max-height:220px;overflow-y:auto}
-  #quotes-preview{min-height:400px;padding:10px}
+  #quotes-preview{min-height:400px;padding:20px;background:#e8e8e8}
   /* quotes-preview 與報價單頁預覽完全一致，不額外覆蓋 quote-paper 樣式 */
+  #quotes-preview.preview-area{padding:8px!important}
   /* ── 客戶／公司管理 ── */
   .mgmt-layout{grid-template-columns:1fr!important;min-height:auto;height:auto}
   .mgmt-list{border-right:none;border-bottom:1px solid var(--border);max-height:260px;min-height:180px}
