@@ -111,16 +111,16 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#f5f5f5;min-heigh
 .qp-logo-placeholder{height:4.3em;width:9.6em;flex-shrink:0;background:transparent}
 .qp-logo img{height:100%;max-width:15.8em;object-fit:contain;display:block;overflow:hidden}
 .qp-co-name{font-size:16px!important;font-weight:600;color:#2C2C2A}
-.qp-co-sub{font-size:0.84em;color:#444;line-height:1.5;margin-top:0.2em;max-width:100%;word-break:break-all}
+.qp-co-sub{font-size:0.84em;color:#444;line-height:1.5;margin-top:0.2em;max-width:100%}
 .qp-meta{text-align:right;flex-shrink:0;min-width:10em;align-self:flex-start}
 .qp-title{font-size:1.25em;font-weight:500;color:var(--blue);letter-spacing:.2em;text-align:center;position:absolute;left:0;right:0;pointer-events:none}
 .qp-num{font-size:0.91em;color:#333;margin-top:0.2em}
 .divider{height:0.5px;background:#bbb;margin:0.7em 0}
-.qp-names-row{display:grid;grid-template-columns:1fr 1fr;gap:0.6em;margin-bottom:0.5em;align-items:baseline}
+.qp-names-row{display:grid;grid-template-columns:1fr 1fr;gap:0.6em;margin-bottom:0.5em;align-items:first baseline}
 .qp-name-cell{min-width:0;word-break:break-word}
 .qp-name-right{text-align:right}
 .qp-label{font-size:0.76em;text-transform:uppercase;letter-spacing:.08em;color:#444;margin-bottom:0.3em}
-.qp-detail-cell{font-size:0.84em;color:#444;line-height:1.6;min-width:0}
+.qp-detail-cell{font-size:0.84em;color:#444;line-height:1.6;min-width:0;word-break:normal;overflow-wrap:normal}
 .qp-detail-right{text-align:right}
 .qp-info{display:grid;grid-template-columns:1fr 1fr;gap:0.6em;margin-bottom:0.7em}
 .qp-block h4{font-size:0.76em;text-transform:uppercase;letter-spacing:.08em;color:#444;margin-bottom:0.4em}
@@ -138,15 +138,20 @@ table.qi thead tr{background:#185FA5}
 table.qi th{padding:0.5em 0.58em;font-size:0.76em;text-transform:uppercase;letter-spacing:.06em;color:#fff;font-weight:600;text-align:left}
 table.qi td{padding:0.5em 0.58em;border-bottom:1px solid #d0dae8;font-size:0.91em;color:#1a1a1a}
 table.qi td.r{text-align:right}
-.qp-bottom-row{display:flex;justify-content:space-between;align-items:flex-end;margin-top:0.3em;gap:1.4em}
-.qp-bank{flex:1;min-width:0}
+/* 匯款+總金額：grid 兩欄各50%，與 qp-info 架構相同 */
+.qp-bottom-row{display:grid;grid-template-columns:1fr 1fr;gap:0.6em;margin-top:0.6em;align-items:start}
+.qp-bank-cell{min-width:0}
+.qp-totals-cell{min-width:0;display:flex;justify-content:flex-end}
 .qp-bank h4{font-size:0.76em;text-transform:uppercase;letter-spacing:.08em;color:#444;margin-bottom:0.4em}
-.qp-bank p{font-size:0.84em;color:#444;line-height:1.6}
-.qp-totals{flex-shrink:0}
-.qp-totals table{min-width:14em}
-.qp-totals td{padding:0.29em 0;font-size:0.91em}
-.qp-totals td:last-child{text-align:right;padding-left:1.15em}
-.qp-totals .grand td{font-size:1.06em;font-weight:500;color:var(--blue);border-top:2px solid var(--blue);padding-top:0.65em}
+.qp-bank p,.qp-bank-cell p{font-size:0.84em;color:#444;line-height:1.6}
+/* 向後相容 */
+.qp-bank{min-width:0}
+.qp-totals{width:auto}
+.qp-totals table{width:100%}
+.qp-totals td{padding:0.29em 0;font-size:0.84em;white-space:nowrap}
+.qp-totals td:first-child{text-align:left;padding-right:0.8em}
+.qp-totals td:last-child{text-align:right}
+.qp-totals .grand td{font-size:0.95em;font-weight:500;color:var(--blue);border-top:2px solid var(--blue);padding-top:0.5em}
 .qp-notes{margin-top:1.6em;padding:0.94em;background:#f7f9fb;border-radius:0.43em;border-left:3px solid var(--blue)}
 .qp-notes h4{font-size:0.76em;text-transform:uppercase;letter-spacing:.08em;color:#444;margin-bottom:0.36em}
 .qp-notes p{font-size:0.87em;color:#222;line-height:1.7;white-space:pre-wrap}
@@ -268,33 +273,16 @@ table.qi td.r{text-align:right}
   .qp-block h4{font-size:0.76em;line-height:1.4;margin-bottom:0.3em}
   .qp-block p{font-size:0.84em;line-height:1.5;color:#444}
   .qp-co-sub{font-size:0.84em!important;line-height:1.5!important;color:#444!important;word-break:break-word;overflow-wrap:anywhere}
-  /* 問題4：匯款資料置左（手機版上下排時靠左） */
-  .qp-bottom-row{flex-direction:column!important;gap:0.8em;align-items:flex-start!important}
-  .qp-bank{width:100%;text-align:left}
-  .qp-bank h4{text-align:left}
-  .qp-bank p{text-align:left}
-  /* 匯款+總金額：左右並排，齊上 */
-  .qp-bottom-row{
-    display:flex!important;
-    flex-direction:row!important;
-    align-items:flex-start!important;
-    gap:0.6em!important;
-  }
-  .qp-bank{flex:1;min-width:0;text-align:left}
-  .qp-bank h4{text-align:left!important}
-  .qp-bank p{text-align:left!important}
-  .qp-totals{
-    flex-shrink:0;
-    align-self:flex-start;
-    min-width:0;
-    max-width:48%;
-    display:flex;
-    justify-content:flex-end;
-  }
-  .qp-totals table{width:100%}
-  .qp-totals td{padding:1px 0;font-size:0.8em;white-space:nowrap}
-  .qp-totals td:first-child{text-align:left;padding-right:6px;width:50%}
-  .qp-totals td:last-child{text-align:right;width:50%}
+  /* 手機：匯款+總金額 grid 兩欄各50%，與桌機相同架構 */
+  .qp-bottom-row{display:grid!important;grid-template-columns:1fr 1fr!important;gap:0.5em!important;align-items:start!important}
+  .qp-bank-cell{min-width:0}
+  .qp-bank h4{font-size:0.7em;text-align:left}
+  .qp-bank p{font-size:0.82em;line-height:1.5;text-align:left}
+  .qp-totals-cell{display:flex!important;justify-content:flex-end!important;min-width:0}
+  .qp-totals table{width:auto}
+  .qp-totals td{padding:1.5px 0;font-size:0.82em;white-space:nowrap}
+  .qp-totals td:first-child{text-align:left;padding-right:6px}
+  .qp-totals td:last-child{text-align:right}
   .qp-totals .grand td{font-size:0.9em;padding-top:4px}
   /* 表格欄位換行控制 */
   table.qi th,table.qi td{white-space:normal;word-break:break-word}
@@ -474,11 +462,15 @@ table.qi td.r{text-align:right}
               <tbody id="p-items-body"></tbody>
             </table>
             <div class="qp-bottom-row">
-              <div class="qp-block qp-bank">
-                <h4>匯款資訊</h4>
-                <p id="p-bank-block" style="color:#ccc">（請選擇出單公司）</p>
+              <div class="qp-bank-cell">
+                <div class="qp-bank">
+                  <h4>匯款資訊</h4>
+                  <p id="p-bank-block" style="color:#ccc">（請選擇出單公司）</p>
+                </div>
               </div>
-              <div class="qp-totals"><table><tbody id="p-totals"></tbody></table></div>
+              <div class="qp-totals-cell">
+                <div class="qp-totals"><table><tbody id="p-totals"></tbody></table></div>
+              </div>
             </div>
             <div class="qp-notes" id="p-notes-wrap"><h4>備註</h4><p id="p-notes"></p></div>
             <div class="qp-signer" id="p-signers"></div>
@@ -563,11 +555,15 @@ table.qi td.r{text-align:right}
               <tbody id="q2-items-body"></tbody>
             </table>
             <div class="qp-bottom-row">
-              <div class="qp-block qp-bank">
-                <h4>匯款資訊</h4>
-                <p id="q2-bank-block" style="color:#ccc">（請選擇出單公司）</p>
+              <div class="qp-bank-cell">
+                <div class="qp-bank">
+                  <h4>匯款資訊</h4>
+                  <p id="q2-bank-block" style="color:#ccc">（請選擇出單公司）</p>
+                </div>
               </div>
-              <div class="qp-totals"><table><tbody id="q2-totals"></tbody></table></div>
+              <div class="qp-totals-cell">
+                <div class="qp-totals"><table><tbody id="q2-totals"></tbody></table></div>
+              </div>
             </div>
             <div class="qp-notes" id="q2-notes-wrap"><h4>備註</h4><p id="q2-notes"></p></div>
             <div class="qp-signer" id="q2-signers"></div>
@@ -1178,7 +1174,7 @@ function renderPreviewTo(ids, co, cl, salesIdx, contactIdx, qtItems, disc, taxRa
   if(coSubEl){
     if(co){
       const rawCoAddr=co.addr||'';
-      const fmtCoAddr=rawCoAddr.replace(/(區)/g,'$1<span class="addr-br"></span>');
+      const fmtCoAddr=rawCoAddr.replace(/(區)/g,'$1<wbr>');
       let s=`${co.zip?co.zip+' ':''}${fmtCoAddr}<br>${co.tel}${co.email?' ／ '+co.email:''}${co.tax?'<br>統編：'+co.tax:''}`;
       if(sp)s+=`<br>業務：${sp.name}${sp.title?' ('+sp.title+')':''}${sp.phone?' ／ '+sp.phone:''}`;
       coSubEl.innerHTML=s;
@@ -1204,7 +1200,7 @@ function renderPreviewTo(ids, co, cl, salesIdx, contactIdx, qtItems, disc, taxRa
     let detail = '';
     if(cl.zip||cl.addr){
       const rawAddr=cl.addr||'';
-      const fmtAddr=rawAddr.replace(/(區)/g,'$1<span class="addr-br"></span>');
+      const fmtAddr=rawAddr.replace(/(區)/g,'$1<wbr>');
       detail+=`${cl.zip?cl.zip+' ':''}${fmtAddr}`;
     }
     if(cl.tel) detail+=`<br>${cl.tel}`;
@@ -2001,7 +1997,12 @@ function printQuote(){
     '.qp-co-sub,.qp-detail-cell{word-break:normal!important;overflow-wrap:normal!important}'+
     '.qp-header{display:flex!important;flex-wrap:nowrap!important;position:relative!important}'+
     '.qp-title{position:absolute!important;left:0!important;right:0!important;text-align:center!important;pointer-events:none!important}'+
-    '.qp-bottom-row{display:flex!important;flex-direction:row!important;justify-content:space-between!important;align-items:flex-start!important}'+
+    '.qp-bottom-row{display:grid!important;grid-template-columns:1fr 1fr!important;gap:0.5em!important;align-items:start!important}'+
+    '.qp-bank-cell{min-width:0!important}'+
+    '.qp-totals-cell{display:flex!important;justify-content:flex-end!important;min-width:0!important}'+
+    '.qp-totals td{font-size:0.84em!important;white-space:nowrap!important;padding:0.25em 0!important}'+
+    '.qp-totals td:first-child{text-align:left!important;padding-right:0.8em!important}'+
+    '.qp-totals td:last-child{text-align:right!important}'+
     '.qp-signer{display:flex!important}'+
     '.qp-footer{display:flex!important;justify-content:space-between!important}'+
     'table.qi thead tr,.qp-notes{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}'+
