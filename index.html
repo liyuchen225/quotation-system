@@ -1973,24 +1973,40 @@ async function printQuote(){
 
   showToast('準備列印中…', 8000);
 
-  // 先把所有 img 轉成 base64（避免 CORS 問題）
+  // 把所有 img 轉成 PNG base64（含 SVG，html2canvas 才能正確截圖）
   const imgs = Array.from(paper.querySelectorAll('img'));
   const origSrcs = imgs.map(img => img.src);
   await Promise.all(imgs.map(img => new Promise(resolve => {
-    if(!img.src || img.src.startsWith('data:')){ resolve(); return; }
+    if(!img.src){ resolve(); return; }
+
+    // 統一用 Image + canvas 轉成 PNG base64
+    // （SVG base64 也需要這步，html2canvas 不支援 SVG data URL）
     const tmp = new Image();
     tmp.crossOrigin = 'anonymous';
+
     tmp.onload = () => {
       try {
         const cv = document.createElement('canvas');
-        cv.width = tmp.naturalWidth; cv.height = tmp.naturalHeight;
-        cv.getContext('2d').drawImage(tmp, 0, 0);
+        // 使用 img 顯示尺寸，確保比例正確
+        cv.width  = tmp.naturalWidth  || img.offsetWidth  || 200;
+        cv.height = tmp.naturalHeight || img.offsetHeight || 80;
+        const ctx = cv.getContext('2d');
+        ctx.drawImage(tmp, 0, 0, cv.width, cv.height);
         img.src = cv.toDataURL('image/png');
-      } catch(e) {}
+      } catch(e) {
+        // canvas 轉換失敗（例如跨域）：保持原始 src
+      }
       resolve();
     };
     tmp.onerror = () => resolve();
-    tmp.src = img.src + (img.src.includes('?') ? '&' : '?') + '_t=' + Date.now();
+
+    // SVG base64：直接設給 Image，瀏覽器會渲染
+    // 外部 URL：加時間戳避免快取 CORS 問題
+    if(img.src.startsWith('data:')) {
+      tmp.src = img.src;
+    } else {
+      tmp.src = img.src + (img.src.includes('?') ? '&' : '?') + '_t=' + Date.now();
+    }
   })));
 
   try {
