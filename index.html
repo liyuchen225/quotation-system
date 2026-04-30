@@ -222,7 +222,7 @@ table.qi td.r{text-align:right}
   }
   #print-snapshot img{
     display:block!important;
-    width:100%!important;
+    width:21cm!important;
     max-width:none!important;
     height:auto!important;
     margin:0!important;padding:0!important;
@@ -2082,17 +2082,7 @@ async function printQuote(){
   const imgEl = document.createElement('img');
   imgEl.src = canvas.toDataURL('image/jpeg', 0.85);
   // 強制寬度填滿，用 setAttribute 確保優先權最高
-  // 計算縮放比例：A4寬(794px) / 截圖寬度
-  const printScale = 794 / canvas.width * 2; // canvas.width 已是 scale*680
-  imgEl.style.cssText = [
-    'display:block',
-    'width:'+canvas.width+'px',
-    'height:auto',
-    'margin:0',
-    'padding:0',
-    'transform-origin:top left',
-    'transform:scale('+printScale+')',
-  ].join(';');
+  imgEl.style.cssText = 'display:block;width:21cm;height:auto;margin:0;padding:0;';
   snap.appendChild(imgEl);
   document.body.insertBefore(snap, document.body.firstChild);
 
