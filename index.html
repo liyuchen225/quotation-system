@@ -1970,7 +1970,7 @@ function newQuote(){
 // ===== BOOT =====
 initApp();
 
-// ===== 列印：visibility 方式，不開新視窗，最穩定 =====
+// ===== 列印：html2canvas 截圖，桌機版樣式，手機/電腦完全一致 =====
 async function printQuote(){
   const paper = document.querySelector('#tab-quote .quote-paper');
   if(!paper){ showToast('請先開啟報價單'); return; }
@@ -1978,46 +1978,34 @@ async function printQuote(){
 
   showToast('準備列印中…', 10000);
 
-  const DESKTOP_W  = 680;
-  const DESKTOP_FS = '13.9px';
-  const DESKTOP_PAD= '36px 42px';
+  // 1. 注入暫時桌機版 style
+  const tmpStyle = document.createElement('style');
+  tmpStyle.id = '__print_tmp__';
+  tmpStyle.textContent =
+    '#tab-quote .quote-paper{' +
+    'font-size:13.9px!important;width:680px!important;max-width:680px!important;' +
+    'padding:36px 42px!important;box-shadow:none!important;border-radius:0!important;' +
+    'margin:0!important;box-sizing:border-box!important;}' +
+    '#tab-quote .quote-paper .qp-header{flex-wrap:nowrap!important;position:relative!important;}' +
+    '#tab-quote .quote-paper .qp-title{position:absolute!important;left:0!important;right:0!important;text-align:center!important;}' +
+    '#tab-quote .quote-paper .qp-logo{height:4.3em!important;}' +
+    '#tab-quote .quote-paper .qp-logo img{height:100%!important;max-width:15.8em!important;}';
+  document.head.appendChild(tmpStyle);
+  await new Promise(r=>setTimeout(r,300));
 
-  // 取得所有 CSS
-  const allCSS = Array.from(document.querySelectorAll('style'))
-    .map(s=>s.textContent).join('\n');
-
-  // clone paper 的 HTML
-  const cloneEl = paper.cloneNode(true);
-  cloneEl.style.cssText = [
-    'font-size:'+DESKTOP_FS,
-    'width:'+DESKTOP_W+'px',
-    'max-width:'+DESKTOP_W+'px',
-    'padding:'+DESKTOP_PAD,
-    'box-shadow:none',
-    'border-radius:0',
-    'margin:0',
-    'box-sizing:border-box',
-    'background:white',
-    'color:#1a1a1a',
-  ].join(';');
-
-  // 把 img 轉成 base64 PNG（含 SVG）
-  const paperImgs = Array.from(paper.querySelectorAll('img'));
-  const cloneImgs = Array.from(cloneEl.querySelectorAll('img'));
-  const origSrcs  = paperImgs.map(img=>img.src);
-
-  await Promise.all(paperImgs.map((img,i)=>new Promise(resolve=>{
-    if(!img.src){ resolve(); return; }
+  // 2. img 轉 PNG base64（含 SVG）
+  const imgs = Array.from(paper.querySelectorAll('img'));
+  const origSrcs = imgs.map(img=>img.src);
+  await Promise.all(imgs.map(img=>new Promise(resolve=>{
+    if(!img.src){resolve();return;}
     const tmp=new Image();
     tmp.crossOrigin='anonymous';
     tmp.onload=()=>{
       try{
         const cv=document.createElement('canvas');
-        cv.width =tmp.naturalWidth ||200;
-        cv.height=tmp.naturalHeight||80;
-        cv.getContext('2d').drawImage(tmp,0,0,cv.width,cv.height);
-        const b64=cv.toDataURL('image/png');
-        if(cloneImgs[i]) cloneImgs[i].src=b64;
+        cv.width=tmp.naturalWidth||200;cv.height=tmp.naturalHeight||80;
+        cv.getContext('2d').drawImage(tmp,0,0);
+        img.src=cv.toDataURL('image/png');
       }catch(e){}
       resolve();
     };
@@ -2025,50 +2013,33 @@ async function printQuote(){
     tmp.src=img.src.startsWith('data:')?img.src:img.src+(img.src.includes('?')?'&':'?')+'_t='+Date.now();
   })));
 
-  // 建立 iframe，固定 680px 寬，完全不受手機螢幕限制
-  const iframe=document.createElement('iframe');
-  iframe.style.cssText='position:fixed;top:0;left:0;width:800px;height:1px;border:none;opacity:0;pointer-events:none;z-index:-1';
-  document.body.appendChild(iframe);
-
-  const iDoc=iframe.contentDocument||iframe.contentWindow.document;
-  iDoc.open();
-  iDoc.write('<!DOCTYPE html><html><head><meta charset="UTF-8">'+
-    '<style>html,body{margin:0;padding:0;width:800px;background:white}'+
-    allCSS+'</style></head><body>'+cloneEl.outerHTML+'</body></html>');
-  iDoc.close();
-
-  // 等 iframe 渲染完成
-  await new Promise(r=>setTimeout(r,500));
+  const cleanup=()=>{
+    imgs.forEach((img,i)=>{img.src=origSrcs[i];});
+    const ts=document.getElementById('__print_tmp__');
+    if(ts)ts.remove();
+  };
 
   try{
-    const target=iDoc.querySelector('.quote-paper')||iDoc.body;
-    const h=target.scrollHeight||iDoc.body.scrollHeight;
-    iframe.style.height=h+'px';
+    const DESKTOP_W=680;
+    const printScale=Math.max(2,(794/DESKTOP_W)*2);
+    const rect=paper.getBoundingClientRect();
 
-    const a4W=794;
-    const printScale=Math.max(2,(a4W/DESKTOP_W)*2);
-
-    const actualW = target.offsetWidth || target.scrollWidth || DESKTOP_W;
-    const actualH = target.scrollHeight || h;
-    const canvas=await html2canvas(target,{
+    const canvas=await html2canvas(paper,{
       scale:printScale,
-      useCORS:false,
-      allowTaint:false,
+      useCORS:false,allowTaint:false,
       backgroundColor:'#ffffff',
-      logging:false,
-      imageTimeout:0,
-      width:actualW,
-      height:actualH,
-      windowWidth:actualW,
-      scrollX:0,
-      scrollY:0,
+      logging:false,imageTimeout:0,
+      width:DESKTOP_W,
+      height:paper.scrollHeight,
+      windowWidth:DESKTOP_W,
+      scrollX:-rect.left,
+      scrollY:-rect.top,
     });
 
-    document.body.removeChild(iframe);
+    cleanup();
 
-    // 放入 print-snapshot 列印
     let snap=document.getElementById('print-snapshot');
-    if(snap) document.body.removeChild(snap);
+    if(snap)snap.parentNode.removeChild(snap);
     snap=document.createElement('div');
     snap.id='print-snapshot';
     snap.style.cssText='position:fixed;top:0;left:0;right:0;bottom:0;margin:0;padding:0;background:white;z-index:99999;overflow:hidden';
@@ -2082,16 +2053,14 @@ async function printQuote(){
     window.print();
 
   }catch(err){
-    try{document.body.removeChild(iframe);}catch(e){}
+    cleanup();
     showToast('列印失敗，請再試一次');
     console.error(err);
   }
 
   setTimeout(()=>{
     const snap=document.getElementById('print-snapshot');
-    if(snap) document.body.removeChild(snap);
+    if(snap&&snap.parentNode)snap.parentNode.removeChild(snap);
+    cleanup();
   },2000);
 }
-</script>
-</body>
-</html>
