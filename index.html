@@ -213,7 +213,9 @@ table.qi td.r{text-align:right}
   *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
   body>*{display:none!important}
   #print-snapshot{
-    display:block!important;
+    display:flex!important;
+    align-items:center!important;
+    justify-content:center!important;
     position:fixed!important;
     top:0!important;left:0!important;right:0!important;bottom:0!important;
     width:100%!important;height:100%!important;
@@ -222,10 +224,10 @@ table.qi td.r{text-align:right}
   }
   #print-snapshot img{
     display:block!important;
-    width:21cm!important;
+    width:19cm!important;
     max-width:none!important;
     height:auto!important;
-    margin:0!important;padding:0!important;
+    margin:auto!important;
   }
 }
 
@@ -2082,7 +2084,7 @@ async function printQuote(){
   const imgEl = document.createElement('img');
   imgEl.src = canvas.toDataURL('image/jpeg', 0.85);
   // 強制寬度填滿，用 setAttribute 確保優先權最高
-  imgEl.style.cssText = 'display:block;width:21cm;height:auto;margin:0;padding:0;';
+  imgEl.style.cssText = 'display:block;width:19cm;height:auto;margin:auto;';
   snap.appendChild(imgEl);
   document.body.insertBefore(snap, document.body.firstChild);
 
