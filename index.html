@@ -223,8 +223,10 @@ table.qi td.r{text-align:right}
   #print-snapshot img{
     display:block!important;
     width:100vw!important;
+    max-width:100vw!important;
     height:auto!important;
     margin:0!important;padding:0!important;
+    position:static!important;
   }
 }
 
@@ -2077,10 +2079,11 @@ async function printQuote(){
   if(snap) snap.parentNode.removeChild(snap);
   snap = document.createElement('div');
   snap.id = 'print-snapshot';
-  snap.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;margin:0;padding:0;background:white;z-index:99998;overflow:hidden';
+  snap.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;margin:0;padding:0;background:white;z-index:99998';
   const imgEl = document.createElement('img');
   imgEl.src = canvas.toDataURL('image/jpeg', 0.85);
-  imgEl.style.cssText = 'display:block;position:absolute;top:0;left:0;width:100%!important;height:auto;margin:0;padding:0';
+  // 強制寬度填滿，用 setAttribute 確保優先權最高
+  imgEl.setAttribute('style', 'display:block !important;width:100vw !important;max-width:100vw !important;height:auto !important;margin:0 !important;padding:0 !important;position:static !important');
   snap.appendChild(imgEl);
   document.body.insertBefore(snap, document.body.firstChild);
 
