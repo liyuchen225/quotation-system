@@ -210,6 +210,7 @@ table.qi td.r{text-align:right}
   @page{size:A4 portrait;margin:0}
   *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
 
+  /* ── 隱藏 UI（共用）── */
   .tabnav,#quote-save-bar,.quote-sidebar,.toolbar,.items-editor,
   #quote-empty-state,#tab-quotes,#tab-clients,#tab-companies
   {display:none!important}
@@ -221,19 +222,21 @@ table.qi td.r{text-align:right}
     width:100%!important;max-width:100%!important;
   }
 
+  /* ── quote-paper：共用樣式，字體預設桌機版 ── */
   .quote-paper{
-    font-size:3.2mm!important;width:100%!important;max-width:100%!important;
-    padding:5mm 7mm!important;box-shadow:none!important;border-radius:0!important;
+    font-size:13.9px!important;  /* 桌機版字體 */
+    width:100%!important;max-width:100%!important;
+    padding:11mm 13mm!important;
+    box-shadow:none!important;border-radius:0!important;
     margin:0!important;box-sizing:border-box!important;background:white!important;
   }
-  .qp-co-name{font-size:3.7mm!important;font-weight:600!important}
 
-  /* header：logo 左、meta 右、標題 position:absolute 置中（不佔高度） */
+  /* ── 共用 layout ── */
   .qp-header{display:flex!important;flex-wrap:nowrap!important;position:relative!important;align-items:center!important;}
   .qp-logo{height:4.3em!important;max-width:15.8em!important;display:flex!important;flex-shrink:0!important;}
   .qp-logo img{height:100%!important;max-width:15.8em!important;object-fit:contain!important;}
   .qp-meta{flex:1!important;text-align:right!important;}
-  .qp-title{position:absolute!important;left:0!important;right:0!important;text-align:center!important;pointer-events:none!important;top:0!important;}
+  .qp-title{position:absolute!important;left:0!important;right:0!important;text-align:center!important;pointer-events:none!important;}
   .qp-names-row{display:grid!important;grid-template-columns:1fr 1fr!important}
   .qp-info{display:grid!important;grid-template-columns:1fr 1fr!important}
   .qp-bottom-row{display:flex!important;flex-direction:row!important}
@@ -242,11 +245,19 @@ table.qi td.r{text-align:right}
   .qp-signer{display:flex!important}
   .qp-footer{display:flex!important;justify-content:space-between!important}
   table.qi{width:100%!important;table-layout:fixed!important}
-  table.qi thead tr{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
-  .qp-notes{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+  table.qi thead tr,.qp-notes{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
   .addr-br{display:none!important}
   .qp-co-name{font-size:16px!important;font-weight:600!important}
   .qp-detail-cell{font-size:0.84em!important;color:#444!important;line-height:1.6!important}
+}
+
+/* ── 手機列印：只覆寫字體和 padding ── */
+@media print and (max-width:768px){
+  .quote-paper{
+    font-size:2.8mm!important;
+    padding:4mm 5mm!important;
+  }
+  .qp-co-name{font-size:3.2mm!important;}
 }
 
 /* iPad */
