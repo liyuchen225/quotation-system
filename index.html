@@ -215,14 +215,14 @@ table.qi td.r{text-align:right}
   #print-snapshot{
     display:block!important;
     position:fixed!important;
-    top:0!important;left:0!important;
-    width:100%!important;height:100%!important;
+    top:0!important;left:0!important;right:0!important;bottom:0!important;
+    width:100vw!important;height:100vh!important;
     margin:0!important;padding:0!important;
     background:white!important;
   }
   #print-snapshot img{
     display:block!important;
-    width:100%!important;
+    width:100vw!important;
     height:auto!important;
     margin:0!important;padding:0!important;
   }
@@ -1994,23 +1994,19 @@ async function printQuote(){
 
   await Promise.all(imgs.map(img => new Promise(resolve => {
     if(!img.src){ resolve(); return; }
-    // 若已是 PNG base64，直接使用
-    if(img.src.startsWith('data:image/png')){ resolve(); return; }
     const tmp = new Image();
-    // SVG 不加 crossOrigin，避免 CORS 錯誤
-    if(!img.src.startsWith('data:')) tmp.crossOrigin = 'anonymous';
+    tmp.crossOrigin = 'anonymous';
     tmp.onload = () => {
       try {
         const cv = document.createElement('canvas');
-        // 用顯示尺寸（不放大），讓 html2canvas 的 scale 負責解析度
-        cv.width = tmp.naturalWidth || img.offsetWidth || 200;
-        cv.height = tmp.naturalHeight || img.offsetHeight || 80;
+        const logoScale = 4;
+        cv.width = (tmp.naturalWidth || 200) * logoScale;
+        cv.height = (tmp.naturalHeight || 80) * logoScale;
         const ctx = cv.getContext('2d');
-        ctx.drawImage(tmp, 0, 0, cv.width, cv.height);
+        ctx.scale(logoScale, logoScale);
+        ctx.drawImage(tmp, 0, 0);
         img.src = cv.toDataURL('image/png');
-      } catch(e) {
-        // 轉換失敗：保持原始 src，讓 html2canvas 嘗試
-      }
+      } catch(e) {}
       resolve();
     };
     tmp.onerror = () => resolve();
