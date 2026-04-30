@@ -2048,6 +2048,8 @@ async function printQuote(){
     const a4W=794;
     const printScale=Math.max(2,(a4W/DESKTOP_W)*2);
 
+    const actualW = target.offsetWidth || target.scrollWidth || DESKTOP_W;
+    const actualH = target.scrollHeight || h;
     const canvas=await html2canvas(target,{
       scale:printScale,
       useCORS:false,
@@ -2055,9 +2057,9 @@ async function printQuote(){
       backgroundColor:'#ffffff',
       logging:false,
       imageTimeout:0,
-      width:DESKTOP_W,
-      height:h,
-      windowWidth:800,
+      width:actualW,
+      height:actualH,
+      windowWidth:actualW,
       scrollX:0,
       scrollY:0,
     });
