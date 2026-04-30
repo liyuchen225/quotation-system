@@ -207,9 +207,53 @@ table.qi td.r{text-align:right}
 .status-select-wrap select{font-size:12px;padding:4px 8px;border:1px solid #ccc;border-radius:var(--radius);background:var(--bg);color:var(--text)}
 
 @media print{
+  /* A4 margin:0，讓 quote-paper 自己的 padding 當邊距 */
   @page{size:A4 portrait;margin:0}
-  /* iframe 列印：iframe 本身的 CSS 控制所有樣式，這裡只作 color-adjust 備用 */
   *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+
+  /* 隱藏所有 UI */
+  body,html{margin:0!important;padding:0!important;background:white!important}
+  .tabnav,#quote-save-bar,.quote-sidebar,.toolbar,.items-editor,
+  #quote-empty-state,#tab-quotes,#tab-clients,#tab-companies
+  {display:none!important}
+
+  /* 父層全部 block，無邊框 */
+  .app,#tab-quote,#quote-editor,.quote-main{
+    display:block!important;border:none!important;box-shadow:none!important;
+    border-radius:0!important;margin:0!important;padding:0!important;
+    min-height:0!important;overflow:visible!important;background:white!important;
+    width:100%!important;max-width:100%!important;
+  }
+
+  /* preview-area：移除灰色背景和 padding */
+  .preview-area{
+    display:block!important;background:white!important;
+    padding:0!important;margin:0!important;overflow:visible!important;
+    height:auto!important;
+  }
+
+  /* quote-paper：填滿 A4 寬度，保留自身 padding 作邊距
+     螢幕版 max-width:680px + padding:2.6em 3em
+     列印版：width:100%，padding 保留（約 36px 42px = 9.5mm 11mm）
+     這樣內容區域比例與螢幕完全一致 */
+  .quote-paper{
+    box-shadow:none!important;border-radius:0!important;
+    margin:0!important;
+    width:100%!important;max-width:100%!important;
+    /* padding、font-size 完全保留螢幕值 */
+  }
+
+  /* 保留 layout */
+  .qp-header{display:flex!important;position:relative!important}
+  .qp-names-row{display:grid!important;grid-template-columns:1fr 1fr!important}
+  .qp-info{display:grid!important;grid-template-columns:1fr 1fr!important}
+  .qp-bottom-row{display:flex!important;flex-direction:row!important}
+  .qp-bank-cell{flex:1!important;min-width:0!important}
+  .qp-totals-cell{flex:0 0 50%!important;display:flex!important;justify-content:flex-end!important}
+  .qp-signer{display:flex!important}
+  .qp-footer{display:flex!important;justify-content:space-between!important}
+  table.qi thead tr{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+  .qp-notes{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
 }
 
 /* iPad */
@@ -513,8 +557,8 @@ table.qi td.r{text-align:right}
             <button class="btn btn-sm btn-danger" onclick="deleteSelectedQuote()">🗑 刪除</button>
           </div>
         </div>
-        <div id="quotes-preview" style="flex:1;overflow-y:auto;padding:20px;background:#e8e8e8">
-          <div id="q2-empty" style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text3);font-size:13px">請從左側選擇報價單</div>
+        <div id="quotes-preview" class="preview-area" style="flex:1;overflow-y:auto">
+          <div id="q2-empty" style="display:flex;align-items:center;justify-content:center;min-height:200px;color:var(--text3);font-size:13px">請從左側選擇報價單</div>
           <div class="quote-paper" id="q2-paper" style="display:none">
             <div class="qp-header">
               <div id="q2-logo"></div>
@@ -1957,68 +2001,21 @@ function printQuote(){
   const paper = document.querySelector('#tab-quote .quote-paper');
   if(!paper){ showToast('請先開啟報價單'); return; }
 
-  // 取得所有 CSS
-  const styles = Array.from(document.querySelectorAll('style'))
-    .map(s=>s.textContent).join('\n');
+  // 確保 tab-quote 和 quote-editor 是顯示狀態
+  const tabEl    = ge('tab-quote');
+  const editorEl = ge('quote-editor');
+  const wasTabHidden    = tabEl && !tabEl.classList.contains('active');
+  const wasEditorHidden = editorEl && editorEl.style.display === 'none';
 
-  // clone paper
-  const clone = paper.cloneNode(true);
-  clone.style.boxShadow = 'none';
-  clone.style.borderRadius = '0';
-  clone.style.margin = '0';
-  clone.style.width = '100%';
-  clone.style.maxWidth = '100%';
-  clone.style.padding = '0';
+  if(wasTabHidden)    { tabEl.classList.add('active'); }
+  if(wasEditorHidden) { editorEl.style.display = 'grid'; }
 
-  // 修正匯款顏色
-  const bankBlock = clone.querySelector('[id$="bank-block"]');
-  if(bankBlock && (bankBlock.style.color==='rgb(204, 204, 204)'||bankBlock.style.color==='#ccc')){
-    bankBlock.style.color='#444';
-  }
+  // 直接列印原始 DOM，@media print 隱藏所有 UI
+  window.print();
 
-  // 組合完整 HTML
-  const html = '<!DOCTYPE html><html lang="zh-TW"><head><meta charset="UTF-8">'+
-    '<meta name="viewport" content="width=device-width,initial-scale=1">'+
-    '<style>'+
-    '@page{size:A4 portrait;margin:11mm 13mm}'+
-    '*{box-sizing:border-box;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}'+
-    'html,body{margin:0;padding:0;background:white;font-family:system-ui,-apple-system,sans-serif}'+
-    styles+
-    '.quote-paper{box-shadow:none!important;border-radius:0!important;margin:0!important;width:100%!important;max-width:100%!important}'+
-    '.qp-co-name{font-size:16px!important;font-weight:600!important}'+
-    '.qp-names-row{display:grid!important;grid-template-columns:1fr 1fr!important;gap:0.5em!important;margin-bottom:0.4em!important;align-items:baseline!important}'+
-    '.qp-name-cell{min-width:0!important;word-break:break-word!important}'+
-    '.qp-name-right{text-align:right!important}'+
-    '.qp-label{font-size:0.76em!important;text-transform:uppercase!important;letter-spacing:.08em!important;color:#444!important;margin-bottom:0.3em!important}'+
-    '.qp-detail-cell{font-size:0.84em!important;color:#444!important;line-height:1.6!important;min-width:0!important}'+
-    '.qp-detail-right{text-align:right!important}'+
-    '.qp-info{display:grid!important;grid-template-columns:1fr 1fr!important;gap:0.5em!important;margin-bottom:0.7em!important}'+
-    '.addr-br{display:none!important}'+
-    '.qp-co-sub,.qp-detail-cell{word-break:normal!important;overflow-wrap:normal!important}'+
-    '.qp-header{display:flex!important;flex-wrap:nowrap!important;position:relative!important}'+
-    '.qp-title{position:absolute!important;left:0!important;right:0!important;text-align:center!important;pointer-events:none!important}'+
-    '.qp-bottom-row{display:flex!important;flex-direction:row!important;gap:0.5em!important;align-items:flex-start!important}'+
-    '.qp-bank-cell{flex:1!important;min-width:0!important}'+
-    '.qp-totals-cell{flex:0 0 50%!important;min-width:0!important;display:flex!important;justify-content:flex-end!important}'+
-    '.qp-totals td{font-size:0.84em!important;white-space:nowrap!important;padding:0.25em 0!important}'+
-    '.qp-totals td:first-child{text-align:left!important;padding-right:0.8em!important}'+
-    '.qp-totals td:last-child{text-align:right!important}'+
-    '.qp-signer{display:flex!important}'+
-    '.qp-footer{display:flex!important;justify-content:space-between!important}'+
-    'table.qi thead tr,.qp-notes{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}'+
-    '</style></head><body>'+clone.outerHTML+
-    '<script>window.onload=function(){window.print()}<\/script>'+
-    '</body></html>';
-
-  // Blob URL 方式：iOS Safari 支援
-  const blob = new Blob([html], {type:'text/html;charset=utf-8'});
-  const url = URL.createObjectURL(blob);
-  const win = window.open(url,'_blank');
-  if(!win){
-    // 彈出視窗被阻擋：提示用戶
-    showToast('⚠️ 請允許彈出視窗後再試',4000);
-  }
-  setTimeout(()=>URL.revokeObjectURL(url), 60000);
+  // 還原
+  if(wasTabHidden)    { tabEl.classList.remove('active'); }
+  if(wasEditorHidden) { editorEl.style.display = 'none'; }
 }
 </script>
 </body>
