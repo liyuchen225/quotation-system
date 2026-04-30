@@ -2077,8 +2077,10 @@ async function printQuote(){
   if(snap) snap.parentNode.removeChild(snap);
   snap = document.createElement('div');
   snap.id = 'print-snapshot';
+  snap.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;margin:0;padding:0;background:white;z-index:99998;overflow:hidden';
   const imgEl = document.createElement('img');
   imgEl.src = canvas.toDataURL('image/jpeg', 0.85);
+  imgEl.style.cssText = 'display:block;position:absolute;top:0;left:0;width:100%!important;height:auto;margin:0;padding:0';
   snap.appendChild(imgEl);
   document.body.insertBefore(snap, document.body.firstChild);
 
