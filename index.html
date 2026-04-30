@@ -140,6 +140,10 @@ table.qi td.r{text-align:right}
 .qp-sign-box{flex:1;border-top:1px solid #888;padding-top:0.58em;font-size:0.84em;color:#333;text-align:center;min-height:2.88em}
 .qp-footer{margin-top:1.6em;padding-top:0.86em;border-top:0.5px solid #ccc;display:flex;justify-content:space-between;font-size:0.84em;color:#555}
 
+/* 地址斷行：手機版才在「區」後換行 */
+.addr-br{display:none}
+@media(max-width:768px){.addr-br{display:block}}
+
 /* LOGO UPLOAD */
 .logo-upload-zone{grid-column:1/-1;border:2px dashed #c0d4ea;border-radius:var(--radius);padding:14px;text-align:center;cursor:pointer;transition:all .15s;background:var(--bg)}
 .logo-upload-zone:hover{border-color:var(--blue);background:var(--blue-lt)}
@@ -1205,7 +1209,7 @@ function renderPreviewTo(ids, co, cl, salesIdx, contactIdx, qtItems, disc, taxRa
   if(coNameEl){coNameEl.style.display='block';coNameEl.textContent=co?co.name:'（請選擇出單公司）';}
   if(coSubEl){
     if(co){const rawCoAddr=co.addr||'';
-      const fmtCoAddr=rawCoAddr.replace(/(區)/g,'$1<br>');
+      const fmtCoAddr=rawCoAddr.replace(/(區)/g,'$1<span class="addr-br"></span>');
       let s=`${co.zip?co.zip+' ':''}${fmtCoAddr}<br>${co.tel}${co.email?' ／ '+co.email:''}${co.tax?'<br>統編：'+co.tax:''}`;if(sp)s+=`<br>業務：${sp.name}${sp.title?' ('+sp.title+')':''}${sp.phone?' ／ '+sp.phone:''}`;coSubEl.innerHTML=s;}
     else{coSubEl.innerHTML='';}
   }
@@ -1221,7 +1225,7 @@ function renderPreviewTo(ids, co, cl, salesIdx, contactIdx, qtItems, disc, taxRa
     if(cl.zip||cl.addr){
       const rawAddr=cl.addr||'';
       // 在「區」後插入換行
-      const fmtAddr=rawAddr.replace(/(區)/g,'$1<br>');
+      const fmtAddr=rawAddr.replace(/(區)/g,'$1<span class="addr-br"></span>');
       clHtml+=`<br>${cl.zip?cl.zip+' ':''}${fmtAddr}`;
     }
     if(cl.tel)clHtml+=`<br>${cl.tel}`;
