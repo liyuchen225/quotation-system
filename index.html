@@ -2022,36 +2022,17 @@ async function printQuote(){
   try{
     const DESKTOP_W=680;
     const printScale=Math.max(2,(794/DESKTOP_W)*2);
-    const rect=paper.getBoundingClientRect();
 
-    // 把 paper 暫時移到 body 最頂層左上角，確保截圖座標正確
-    const origParent = paper.parentElement;
-    const origNext   = paper.nextSibling;
-    const origStyleAttr = paper.getAttribute('style') || '';
-
-    paper.style.position = 'fixed';
-    paper.style.top      = '0';
-    paper.style.left     = '0';
-    paper.style.zIndex   = '99998';
-
-    await new Promise(r=>setTimeout(r,100));
-
+    // 直接截 paper 元素（html2canvas 自動處理元素位置）
+    // 不指定 x/y/scroll，讓 html2canvas 自動對齊元素
     const canvas=await html2canvas(paper,{
       scale:printScale,
-      useCORS:false,allowTaint:false,
+      useCORS:false,
+      allowTaint:false,
       backgroundColor:'#ffffff',
-      logging:false,imageTimeout:0,
-      width:DESKTOP_W,
-      height:paper.scrollHeight,
-      windowWidth:DESKTOP_W,
-      x:0, y:0,
-      scrollX:0, scrollY:0,
+      logging:false,
+      imageTimeout:0,
     });
-
-    // 還原位置
-    paper.setAttribute('style', origStyleAttr);
-    if(origNext) origParent.insertBefore(paper, origNext);
-    else origParent.appendChild(paper);
 
     cleanup();
 
@@ -2081,3 +2062,7 @@ async function printQuote(){
     cleanup();
   },2000);
 }
+
+</script>
+</body>
+</html>
