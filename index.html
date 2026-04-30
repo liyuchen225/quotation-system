@@ -2027,13 +2027,13 @@ async function printQuote(){
 
   // 建立 iframe，固定 680px 寬，完全不受手機螢幕限制
   const iframe=document.createElement('iframe');
-  iframe.style.cssText='position:fixed;top:0;left:0;width:680px;height:1px;border:none;opacity:0;pointer-events:none;z-index:-1';
+  iframe.style.cssText='position:fixed;top:0;left:0;width:800px;height:1px;border:none;opacity:0;pointer-events:none;z-index:-1';
   document.body.appendChild(iframe);
 
   const iDoc=iframe.contentDocument||iframe.contentWindow.document;
   iDoc.open();
   iDoc.write('<!DOCTYPE html><html><head><meta charset="UTF-8">'+
-    '<style>html,body{margin:0;padding:0;width:680px;background:white}'+
+    '<style>html,body{margin:0;padding:0;width:800px;background:white}'+
     allCSS+'</style></head><body>'+cloneEl.outerHTML+'</body></html>');
   iDoc.close();
 
@@ -2057,7 +2057,7 @@ async function printQuote(){
       imageTimeout:0,
       width:DESKTOP_W,
       height:h,
-      windowWidth:DESKTOP_W,
+      windowWidth:800,
       scrollX:0,
       scrollY:0,
     });
