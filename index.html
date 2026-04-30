@@ -110,7 +110,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#f5f5f5;min-heigh
 .qp-logo{height:4.3em;max-width:15.8em;border-radius:0.3em;background:transparent;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .qp-logo-placeholder{height:4.3em;width:9.6em;flex-shrink:0;background:transparent}
 .qp-logo img{height:100%;max-width:15.8em;object-fit:contain;display:block;overflow:hidden}
-.qp-co-name{font-size:1.15em;font-weight:600;color:#2C2C2A}
+.qp-co-name{font-size:16px;font-weight:600;color:#2C2C2A}
 .qp-co-sub{font-size:0.84em;color:#444;line-height:1.5;margin-top:0.2em;max-width:100%}
 .qp-meta{text-align:right;flex-shrink:0;min-width:10em;align-self:flex-start}
 .qp-title{font-size:1.25em;font-weight:500;color:var(--blue);letter-spacing:.2em;text-align:center;position:absolute;left:0;right:0;pointer-events:none}
@@ -246,8 +246,10 @@ table.qi td.r{text-align:right}
     margin-top:0.5em;
     margin-bottom:0.3em;
   }
-  /* 公司名稱=客戶名稱，統一用 1.15em */
-  .qp-co-name{font-size:1.15em!important;font-weight:600!important}
+  /* 公司/客戶名稱：固定 11px，不用 em */
+  .qp-co-name{font-size:11px!important;font-weight:600!important}
+  /* 客戶名稱 span 也要同步覆蓋 */
+  .qp-block p span[style*="font-size"]{font-size:11px!important}
   /* 問題3：左右資訊欄字體/行距完全一致 */
   .qp-block h4{font-size:0.76em;line-height:1.4;margin-bottom:0.3em}
   .qp-block p{font-size:0.84em;line-height:1.5;color:#444}
@@ -257,13 +259,14 @@ table.qi td.r{text-align:right}
   .qp-bank{width:100%;text-align:left}
   .qp-bank h4{text-align:left}
   .qp-bank p{text-align:left}
-  /* 總金額：靠右，與匯款齊上，縮小寬度 */
-  .qp-bottom-row{align-items:flex-start!important}
-  .qp-totals{width:auto;align-self:flex-start;min-width:45%;max-width:48%}
-  .qp-totals table{width:100%;min-width:120px}
-  .qp-totals td{padding:2px 0;font-size:0.84em}
-  .qp-totals td:last-child{padding-left:8px}
-  .qp-totals .grand td{font-size:0.95em;padding-top:6px}
+  /* 總金額：與匯款齊上，縮小寬度 */
+  .qp-bottom-row{align-items:flex-start!important;gap:0.5em!important}
+  .qp-bank{flex:1;min-width:0}
+  .qp-totals{flex-shrink:0;width:auto;align-self:flex-start;min-width:0;max-width:42%}
+  .qp-totals table{width:100%}
+  .qp-totals td{padding:1.5px 0;font-size:0.82em;white-space:nowrap}
+  .qp-totals td:last-child{padding-left:6px;text-align:right}
+  .qp-totals .grand td{font-size:0.92em;padding-top:5px}
   /* 表格欄位換行控制 */
   table.qi th,table.qi td{white-space:normal;word-break:break-word}
   table.qi th:nth-child(1),table.qi td:nth-child(1){white-space:nowrap}
@@ -1149,7 +1152,7 @@ function renderPreviewTo(ids, co, cl, salesIdx, contactIdx, qtItems, disc, taxRa
   // 客戶
   let clHtml='（尚未選擇客戶）';
   if(cl){
-    clHtml=`<span style="font-size:1.15em;font-weight:600;color:${brandColor};display:block">${cl.name}</span>`;
+    clHtml=`<span style="font-size:16px;font-weight:600;color:${brandColor};display:block">${cl.name}</span>`;
     if(cl.zip||cl.addr){
       const rawAddr=cl.addr||'';
       // 在「區」後插入換行
@@ -1902,86 +1905,56 @@ function printQuote(){
   const paper = document.querySelector('#tab-quote .quote-paper');
   if(!paper){ showToast('請先開啟報價單'); return; }
 
-  // 取得所有 CSS（完整複製）
+  // 取得所有 CSS
   const styles = Array.from(document.querySelectorAll('style'))
     .map(s=>s.textContent).join('\n');
 
-  // clone paper 並修正
+  // clone paper
   const clone = paper.cloneNode(true);
   clone.style.boxShadow = 'none';
   clone.style.borderRadius = '0';
   clone.style.margin = '0';
-  clone.style.maxWidth = '100%';
   clone.style.width = '100%';
-  clone.style.fontSize = '3.7mm';
+  clone.style.maxWidth = '100%';
   clone.style.padding = '0';
 
   // 修正匯款顏色
   const bankBlock = clone.querySelector('[id$="bank-block"]');
   if(bankBlock && (bankBlock.style.color==='rgb(204, 204, 204)'||bankBlock.style.color==='#ccc')){
-    bankBlock.style.color = '#444';
+    bankBlock.style.color='#444';
   }
 
-  // 列印版匯款左對齊
-  const bottomRow = clone.querySelector('.qp-bottom-row');
-  if(bottomRow){
-    bottomRow.style.cssText = 'display:flex;flex-direction:row;justify-content:space-between;align-items:flex-start;gap:12px;width:100%';
-    const bank = bottomRow.querySelector('.qp-bank');
-    if(bank) bank.style.cssText = 'flex:1;min-width:0;text-align:left';
-    const totals = bottomRow.querySelector('.qp-totals');
-    if(totals) totals.style.cssText = 'flex-shrink:0;min-width:120px;max-width:45%';
-  }
-
-  // 建立 iframe（隱藏）
-  const iframe = document.createElement('iframe');
-  iframe.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:1px;height:1px;opacity:0';
-  document.body.appendChild(iframe);
-
-  const iDoc = iframe.contentDocument || iframe.contentWindow.document;
-  iDoc.open();
-  iDoc.write('<!DOCTYPE html><html lang="zh-TW"><head><meta charset="UTF-8">'+
+  // 組合完整 HTML
+  const html = '<!DOCTYPE html><html lang="zh-TW"><head><meta charset="UTF-8">'+
+    '<meta name="viewport" content="width=device-width,initial-scale=1">'+
     '<style>'+
     '@page{size:A4 portrait;margin:11mm 13mm}'+
-    '*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;box-sizing:border-box}'+
+    '*{box-sizing:border-box;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}'+
     'html,body{margin:0;padding:0;background:white;font-family:system-ui,-apple-system,sans-serif}'+
     styles+
-    // 列印版覆寫：移除螢幕裝飾
-    '.quote-paper{box-shadow:none!important;border-radius:0!important;margin:0!important;max-width:100%!important;width:100%!important;font-size:3.7mm!important;padding:0!important}'+
-    // 確保 qp-info 兩欄
+    '.quote-paper{box-shadow:none!important;border-radius:0!important;margin:0!important;width:100%!important;max-width:100%!important;padding:0!important}'+
+    '.addr-br{display:none!important}'+
+    '.qp-co-sub,.qp-block p{word-break:normal!important;overflow-wrap:normal!important}'+
     '.qp-info{display:grid!important;grid-template-columns:1fr 1fr!important}'+
     '.qp-header{display:flex!important;flex-wrap:nowrap!important;position:relative!important}'+
     '.qp-title{position:absolute!important;left:0;right:0;text-align:center!important;pointer-events:none}'+
     '.qp-bottom-row{display:flex!important;flex-direction:row!important;justify-content:space-between!important;align-items:flex-start!important}'+
-    '.qp-signer{display:flex!important}'+
-    '.qp-footer{display:flex!important;justify-content:space-between!important}'+
-    // 地址不斷行
-    '.qp-co-sub{word-break:normal!important;overflow-wrap:normal!important}'+
-    '.qp-block p{word-break:normal!important;overflow-wrap:normal!important}'+
-    '.addr-br{display:none!important}'+
-    // 彩色
+    '.qp-signer{display:flex!important}.qp-footer{display:flex!important;justify-content:space-between!important}'+
     'table.qi thead tr{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}'+
     '.qp-notes{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}'+
-    '</style></head><body>'+clone.outerHTML+'</body></html>');
-  iDoc.close();
+    '</style></head><body>'+clone.outerHTML+
+    '<script>window.onload=function(){window.print()}<\/script>'+
+    '</body></html>';
 
-  // 圖片載入後列印
-  const imgs = iDoc.querySelectorAll('img');
-  let pending = imgs.length;
-  function doPrint(){
-    iframe.contentWindow.focus();
-    iframe.contentWindow.print();
-    // 列印完清除
-    setTimeout(()=>{ if(iframe.parentNode) iframe.parentNode.removeChild(iframe); }, 2000);
+  // Blob URL 方式：iOS Safari 支援
+  const blob = new Blob([html], {type:'text/html;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const win = window.open(url,'_blank');
+  if(!win){
+    // 彈出視窗被阻擋：提示用戶
+    showToast('⚠️ 請允許彈出視窗後再試',4000);
   }
-  if(pending === 0){ setTimeout(doPrint, 300); }
-  else {
-    imgs.forEach(img=>{
-      if(img.complete){ pending--; if(pending<=0) setTimeout(doPrint,300); }
-      else{
-        img.onload = img.onerror = ()=>{ pending--; if(pending<=0) setTimeout(doPrint,300); };
-      }
-    });
-  }
+  setTimeout(()=>URL.revokeObjectURL(url), 60000);
 }
 </script>
 </body>
