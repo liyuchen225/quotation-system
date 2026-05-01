@@ -2048,13 +2048,17 @@ async function downloadImage(){
   if(titleEl) titleEl.style.cssText = 'position:absolute!important;top:50%!important;transform:translateY(-50%)!important;left:0!important;right:0!important;text-align:center!important;';
   if(headerEl) headerEl.style.cssText = 'display:flex!important;flex-wrap:nowrap!important;position:relative!important;align-items:center!important;';
 
-  // 截圖前固定備註字體（避免 position:fixed 讓 em 基準跑掉）
+  // 截圖前固定所有用 em 的備註元素（position:fixed 會讓 em 基準跑掉）
+  const notesWrap = paper.querySelector('.qp-notes');
   const notesP = paper.querySelector('.qp-notes p');
   const notesH4 = paper.querySelector('.qp-notes h4');
+  const origNotesWrapStyle = notesWrap ? notesWrap.getAttribute('style')||'' : '';
   const origNotesPStyle = notesP ? notesP.getAttribute('style')||'' : '';
   const origNotesH4Style = notesH4 ? notesH4.getAttribute('style')||'' : '';
+  // 13.9px 為 paper 的 font-size，以下全部換算成 px
+  if(notesWrap) notesWrap.style.cssText = 'margin-top:22px!important;padding:13px!important;background:#f7f9fb!important;border-radius:6px!important;border-left:3px solid var(--blue)!important;';
   if(notesP) notesP.style.cssText = 'font-size:12.1px!important;line-height:1.7!important;color:#222!important;white-space:pre-wrap!important;';
-  if(notesH4) notesH4.style.cssText = 'font-size:10.6px!important;color:#444!important;';
+  if(notesH4) notesH4.style.cssText = 'font-size:10.6px!important;color:#444!important;margin-bottom:5px!important;';
 
   await new Promise(r => setTimeout(r, 300));
 
@@ -2078,6 +2082,7 @@ async function downloadImage(){
   paper.setAttribute('style', origStyle);
   if(titleEl) titleEl.setAttribute('style', origTitleStyle);
   if(headerEl) headerEl.setAttribute('style', origHeaderStyle);
+  if(notesWrap) notesWrap.setAttribute('style', origNotesWrapStyle);
   if(notesP) notesP.setAttribute('style', origNotesPStyle);
   if(notesH4) notesH4.setAttribute('style', origNotesH4Style);
   imgs.forEach((img, i) => { img.src = origSrcs[i]; });
