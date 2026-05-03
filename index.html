@@ -2064,18 +2064,25 @@ async function downloadImage(){
   if(titleEl) titleEl.style.cssText = 'position:absolute!important;top:50%!important;transform:translateY(-50%)!important;left:0!important;right:0!important;text-align:center!important;';
   if(headerEl) headerEl.style.cssText = 'display:flex!important;flex-wrap:nowrap!important;position:relative!important;align-items:center!important;';
 
-  // 強制桌機版備註樣式（覆蓋手機版 @media CSS）
-  const cloneNotes = clone.querySelector('.qp-notes');
-  const cloneNotesP = clone.querySelector('.qp-notes p');
-  const cloneNotesH4 = clone.querySelector('.qp-notes h4');
-  if(cloneNotes) cloneNotes.style.cssText = 'margin-top:22px;padding:13px;background:#f7f9fb;border-radius:6px;border-left:3px solid #2563eb;';
-  if(cloneNotesP) cloneNotesP.style.cssText = 'font-size:12.1px;color:#222;line-height:1.7;white-space:pre-wrap;';
-  if(cloneNotesH4) cloneNotesH4.style.cssText = 'font-size:10.6px;color:#444;margin-bottom:5px;text-transform:uppercase;letter-spacing:.08em;';
+  // 注入 style 強制桌機版所有樣式（最高優先權）
+  const cloneStyleTag = document.createElement('style');
+  cloneStyleTag.textContent =
+    '.quote-paper .qp-co-name{font-size:16px!important;font-weight:600!important;}' +
+    '.quote-paper .qp-notes{margin-top:22px!important;padding:13px!important;}' +
+    '.quote-paper .qp-notes h4{font-size:10.6px!important;margin-bottom:5px!important;letter-spacing:.08em!important;}' +
+    '.quote-paper .qp-notes p{font-size:12.1px!important;line-height:1.7!important;color:#222!important;white-space:pre-wrap!important;}';
+  clone.appendChild(cloneStyleTag);
 
-  // 強制桌機版產品備註字體
+  // 產品備註字體
   clone.querySelectorAll('td[colspan="5"]').forEach(td => {
-    td.style.fontSize = '10.5px';
+    td.style.setProperty('font-size', '10.5px', 'important');
   });
+
+  // qp-names-row 和 qp-info 確保桌機版 grid
+  const namesRow = clone.querySelector('.qp-names-row');
+  const infoRow = clone.querySelector('.qp-info');
+  if(namesRow) namesRow.style.cssText = 'display:grid!important;grid-template-columns:1fr 1fr!important;';
+  if(infoRow) infoRow.style.cssText = 'display:grid!important;grid-template-columns:1fr 1fr!important;';
 
   document.body.appendChild(clone);
   await new Promise(r => setTimeout(r, 300));
