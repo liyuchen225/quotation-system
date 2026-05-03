@@ -310,8 +310,8 @@ table.qi td.r{text-align:right}
   .qp-co-sub{font-size:0.84em!important;line-height:1.5!important;color:#444!important;word-break:break-word;overflow-wrap:anywhere}
   /* 手機：備註縮小 */
   .qp-notes{margin-top:6px!important;padding:5px!important}
-  .qp-notes h4{font-size:7px!important;margin-bottom:2px!important}
-  .qp-notes p{font-size:7.5px!important;line-height:1.3!important}
+  .qp-notes h4{font-size:7px!important;margin-bottom:2px!important;letter-spacing:0!important}
+  .qp-notes p{font-size:8px!important;line-height:1.3!important;color:#222!important}
   /* 手機：匯款+總金額 flex，左欄佔剩餘空間，右欄固定50% */
   .qp-bottom-row{display:flex!important;flex-direction:row!important;gap:0.5em!important;align-items:flex-start!important}
   .qp-bank-cell{flex:1!important;min-width:0!important}
@@ -1264,7 +1264,7 @@ function renderPreviewTo(ids, co, cl, salesIdx, contactIdx, qtItems, disc, taxRa
     const tr = document.createElement('tr');
     tr.innerHTML = `<td>${i+1}</td><td>${it.desc}</td><td class="r">${fmt(it.qty)}</td><td class="r">${it.unit||''}</td><td class="r">$${fmtPrice(it.price,forceInt)}</td><td class="r">$${fmt(amt)}</td>`;
     tbody.appendChild(tr);
-    if(it.remark){const tr2=document.createElement('tr');tr2.innerHTML=`<td></td><td colspan="5" style="font-size:10.5px;color:#666;padding-top:1px;padding-bottom:2px;line-height:1.3;border-bottom:1px solid #d0dae8">　${it.remark}</td>`;tbody.appendChild(tr2);}
+    if(it.remark){const remarkSize=window.innerWidth<=768?'8px':'10.5px';const tr2=document.createElement('tr');tr2.innerHTML=`<td></td><td colspan="5" style="font-size:${remarkSize};color:#666;padding-top:1px;padding-bottom:2px;line-height:1.3;border-bottom:1px solid #d0dae8">　${it.remark}</td>`;tbody.appendChild(tr2);}
   });
 
   // 小計/稅金/總計
