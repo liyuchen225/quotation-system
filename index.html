@@ -308,10 +308,6 @@ table.qi td.r{text-align:right}
   .qp-block h4{font-size:0.76em;line-height:1.4;margin-bottom:0.3em}
   .qp-block p{font-size:0.84em;line-height:1.5;color:#444}
   .qp-co-sub{font-size:0.84em!important;line-height:1.5!important;color:#444!important;word-break:break-word;overflow-wrap:anywhere}
-  /* 手機：備註縮小 */
-  .qp-notes{margin-top:6px!important;padding:5px!important}
-  .qp-notes h4{font-size:7px!important;margin-bottom:2px!important;letter-spacing:0!important}
-  .qp-notes p{font-size:8px!important;line-height:1.3!important;color:#222!important}
   /* 手機：匯款+總金額 flex，左欄佔剩餘空間，右欄固定50% */
   .qp-bottom-row{display:flex!important;flex-direction:row!important;gap:0.5em!important;align-items:flex-start!important}
   .qp-bank-cell{flex:1!important;min-width:0!important}
@@ -453,8 +449,7 @@ table.qi td.r{text-align:right}
           <div style="display:flex;gap:8px;flex-wrap:wrap">
             <button class="btn btn-sm" onclick="addItem()">＋ 新增項目</button>
             <button class="btn btn-sm" onclick="sendByEmail()" title="用預設郵件程式寄送給承辦人">📧 寄出報價</button>
-            <button class="btn btn-primary btn-sm" onclick="printQuote()" id="btn-print-pdf">🖨️ 列印 / PDF</button>
-            <button class="btn btn-primary btn-sm" onclick="downloadImage()" id="btn-download-img" style="display:none">📥 下載圖片</button>
+            <button class="btn btn-primary btn-sm" onclick="printQuote()">🖨️ 列印 / PDF</button>
           </div>
         </div>
         <div class="items-editor">
@@ -1264,7 +1259,7 @@ function renderPreviewTo(ids, co, cl, salesIdx, contactIdx, qtItems, disc, taxRa
     const tr = document.createElement('tr');
     tr.innerHTML = `<td>${i+1}</td><td>${it.desc}</td><td class="r">${fmt(it.qty)}</td><td class="r">${it.unit||''}</td><td class="r">$${fmtPrice(it.price,forceInt)}</td><td class="r">$${fmt(amt)}</td>`;
     tbody.appendChild(tr);
-    if(it.remark){const remarkSize=window.innerWidth<=768?'8px':'10.5px';const tr2=document.createElement('tr');tr2.innerHTML=`<td></td><td colspan="5" style="font-size:${remarkSize};color:#666;padding-top:1px;padding-bottom:2px;line-height:1.3;border-bottom:1px solid #d0dae8">　${it.remark}</td>`;tbody.appendChild(tr2);}
+    if(it.remark){const tr2=document.createElement('tr');tr2.innerHTML=`<td></td><td colspan="5" style="font-size:10.5px;color:#666;padding-top:1px;padding-bottom:2px;line-height:1.3;border-bottom:1px solid #d0dae8">　${it.remark}</td>`;tbody.appendChild(tr2);}
   });
 
   // 小計/稅金/總計
@@ -1386,7 +1381,6 @@ function clientForm(cl){
   return`<h3>${cl?'編輯客戶':'新增客戶'}</h3>
 <div class="form-grid">
   <div class="field"><label>客戶名稱 *</label><input id="cf-name" value="${v('name')}"></div>
-  <div class="field"><label>客戶代號</label><input id="cf-code" value="${v('code')}" placeholder="例：HCC（選填）"></div>
   <div class="field"><label>統一編號</label><input id="cf-tax" value="${v('tax')}" inputmode="numeric" maxlength="8"></div>
   <div class="field"><label>公司電話</label><input id="cf-tel" value="${v('tel')}" placeholder="例：02-2345-6789"></div>
   <div class="field"><label>傳真</label><input id="cf-fax" value="${v('fax')}" placeholder="例：02-2345-6780"></div>
@@ -1486,10 +1480,9 @@ function saveClientForm(id){
     }
   }
 
-  const code=ge('cf-code')?.value.trim()||'';
   const contacts=(window.clContacts||[]).filter(p=>p.name.trim());
   const offices=(window.clOffices||[]).filter(o=>o.name.trim());
-  const data={name,tax,code,tel:ge('cf-tel')?.value.trim()||'',fax:ge('cf-fax')?.value.trim()||'',taxType:ge('cf-taxtype')?.value||'extra',
+  const data={name,tax,tel:ge('cf-tel')?.value.trim()||'',fax:ge('cf-fax')?.value.trim()||'',taxType:ge('cf-taxtype')?.value||'extra',
     zip:ge('cf-zip')?.value.trim()||'',addr:ge('cf-addr')?.value.trim()||'',offices,contacts};
   if(id==='-1'||id===-1){
     data.id=String(Date.now());
@@ -1984,156 +1977,8 @@ function newQuote(){
   try{localStorage.setItem('qs_last_tab','quote');}catch(e){}
 }
 
-// ===== 產生預設檔名 =====
-function getDefaultFilename(ext){
-  const num = document.getElementById('q-num')?.value?.trim() || '';
-  const clCode = (selectedClient?.code||'').trim();
-  const firstItem = (items && items.length > 0) ? (items[0].desc||'').trim() : '';
-  const parts = [num, clCode, firstItem ? firstItem+'等一批' : ''].filter(Boolean);
-  const base = parts.join('_').replace(/[/\\:*?"<>|]/g, '');
-  return (base || '報價單') + '.' + ext;
-}
-
 // ===== BOOT =====
 initApp();
-
-// 手機版：顯示下載按鈕，隱藏列印按鈕
-if(window.innerWidth <= 768){
-  const btnPrint = document.getElementById('btn-print-pdf');
-  const btnDown  = document.getElementById('btn-download-img');
-  if(btnPrint) btnPrint.style.display = 'none';
-  if(btnDown)  btnDown.style.display  = '';
-}
-
-// ===== 下載圖片（手機版）=====
-async function downloadImage(){
-  const paper = document.querySelector('#tab-quote .quote-paper');
-  if(!paper){ showToast('請先開啟報價單'); return; }
-  if(typeof html2canvas==='undefined'){ showToast('截圖模組載入中，請稍候'); return; }
-
-  showToast('準備下載中…', 10000);
-
-  // Step 1: img 轉 PNG base64
-  const imgs = Array.from(paper.querySelectorAll('img'));
-  const origSrcs = imgs.map(img => img.src);
-  await Promise.all(imgs.map(img => new Promise(resolve => {
-    if(!img.src){ resolve(); return; }
-    const tmp = new Image();
-    tmp.onload = () => {
-      try {
-        const cv = document.createElement('canvas');
-        cv.width = tmp.naturalWidth||300;
-        cv.height = tmp.naturalHeight||120;
-        cv.getContext('2d').drawImage(tmp, 0, 0, cv.width, cv.height);
-        const png = cv.toDataURL('image/png');
-        if(png !== 'data:,') img.src = png;
-      } catch(e){}
-      resolve();
-    };
-    tmp.onerror = () => resolve();
-    tmp.src = img.src;
-  })));
-
-  // Step 2: clone paper，在 clone 上套桌機版樣式
-  const clone = paper.cloneNode(true);
-
-  // 同步 img src（已轉成 base64）
-  const cloneImgs = clone.querySelectorAll('img');
-  imgs.forEach((img, i) => { if(cloneImgs[i]) cloneImgs[i].src = img.src; });
-
-  // 套桌機版 inline style（不動原始 paper）
-  clone.style.cssText = [
-    'font-size:13.9px',
-    'width:680px',
-    'max-width:680px',
-    'padding:36px 42px',
-    'box-shadow:none',
-    'border-radius:0',
-    'margin:0',
-    'box-sizing:border-box',
-    'position:fixed',
-    'top:0',
-    'left:0',
-    'z-index:99997',
-    'background:white',
-  ].join(';');
-
-  // 修正 clone 內的 layout
-  const titleEl = clone.querySelector('.qp-title');
-  const headerEl = clone.querySelector('.qp-header');
-  if(titleEl) titleEl.style.cssText = 'position:absolute!important;top:50%!important;transform:translateY(-50%)!important;left:0!important;right:0!important;text-align:center!important;';
-  if(headerEl) headerEl.style.cssText = 'display:flex!important;flex-wrap:nowrap!important;position:relative!important;align-items:center!important;';
-
-  // 直接對 clone 元素強制設定桌機版樣式
-  // qp-notes：直接設 inline style（最高優先權，覆蓋 @media CSS）
-  const cloneNotesEl = clone.querySelector('.qp-notes');
-  const cloneNotesPEl = clone.querySelector('.qp-notes p');
-  const cloneNotesH4El = clone.querySelector('.qp-notes h4');
-  if(cloneNotesEl){
-    cloneNotesEl.style.setProperty('margin-top','22px','important');
-    cloneNotesEl.style.setProperty('padding','13px','important');
-  }
-  if(cloneNotesPEl){
-    cloneNotesPEl.style.setProperty('font-size','12.1px','important');
-    cloneNotesPEl.style.setProperty('line-height','1.7','important');
-    cloneNotesPEl.style.setProperty('color','#222','important');
-    cloneNotesPEl.style.setProperty('white-space','pre-wrap','important');
-  }
-  if(cloneNotesH4El){
-    cloneNotesH4El.style.setProperty('font-size','10.6px','important');
-    cloneNotesH4El.style.setProperty('margin-bottom','5px','important');
-  }
-
-  // 產品備註字體
-  clone.querySelectorAll('td[colspan="5"]').forEach(td => {
-    td.style.setProperty('font-size', '10.5px', 'important');
-  });
-
-  // qp-names-row 和 qp-info 確保桌機版 grid
-  const namesRow = clone.querySelector('.qp-names-row');
-  const infoRow = clone.querySelector('.qp-info');
-  if(namesRow) namesRow.style.cssText = 'display:grid!important;grid-template-columns:1fr 1fr!important;';
-  if(infoRow) infoRow.style.cssText = 'display:grid!important;grid-template-columns:1fr 1fr!important;';
-
-  document.body.appendChild(clone);
-  await new Promise(r => setTimeout(r, 300));
-
-  // Step 3: 截圖
-  let canvas;
-  try {
-    canvas = await html2canvas(clone, {
-      scale: 2,
-      useCORS: false,
-      allowTaint: false,
-      backgroundColor: '#ffffff',
-      logging: false,
-      imageTimeout: 0,
-      width: 680,
-      height: clone.scrollHeight,
-      windowWidth: 680,
-      x: 0,
-      y: 0,
-      scrollX: 0,
-      scrollY: 0,
-    });
-  } catch(err) {
-    document.body.removeChild(clone);
-    imgs.forEach((img, i) => { img.src = origSrcs[i]; });
-    showToast('下載失敗，請再試一次');
-    return;
-  }
-
-  // Step 4: 移除 clone，還原 img
-  document.body.removeChild(clone);
-  imgs.forEach((img, i) => { img.src = origSrcs[i]; });
-
-  // Step 5: 下載
-  const link = document.createElement('a');
-  link.download = getDefaultFilename('jpg');
-  link.href = canvas.toDataURL('image/jpeg', 0.85);
-  link.click();
-  showToast('✅ 圖片已下載！');
-}
 
 // ===== 列印：html2canvas 截圖 =====
 async function printQuote(){
