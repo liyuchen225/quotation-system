@@ -449,7 +449,8 @@ table.qi td.r{text-align:right}
           <div style="display:flex;gap:8px;flex-wrap:wrap">
             <button class="btn btn-sm" onclick="addItem()">＋ 新增項目</button>
             <button class="btn btn-sm" onclick="sendByEmail()" title="用預設郵件程式寄送給承辦人">📧 寄出報價</button>
-            <button class="btn btn-primary btn-sm" onclick="printQuote()">🖨️ 列印 / PDF</button>
+            <button class="btn btn-primary btn-sm" onclick="printQuote()" id="btn-print-pdf">🖨️ 列印 / PDF</button>
+            <button class="btn btn-primary btn-sm" onclick="downloadImage()" id="btn-download-img" style="display:none">📥 下載圖片</button>
           </div>
         </div>
         <div class="items-editor">
@@ -1381,6 +1382,7 @@ function clientForm(cl){
   return`<h3>${cl?'編輯客戶':'新增客戶'}</h3>
 <div class="form-grid">
   <div class="field"><label>客戶名稱 *</label><input id="cf-name" value="${v('name')}"></div>
+  <div class="field"><label>客戶代號</label><input id="cf-code" value="${v('code')}" placeholder="例：HCC（選填）"></div>
   <div class="field"><label>統一編號</label><input id="cf-tax" value="${v('tax')}" inputmode="numeric" maxlength="8"></div>
   <div class="field"><label>公司電話</label><input id="cf-tel" value="${v('tel')}" placeholder="例：02-2345-6789"></div>
   <div class="field"><label>傳真</label><input id="cf-fax" value="${v('fax')}" placeholder="例：02-2345-6780"></div>
@@ -1480,9 +1482,10 @@ function saveClientForm(id){
     }
   }
 
+  const code=ge('cf-code')?.value.trim()||'';
   const contacts=(window.clContacts||[]).filter(p=>p.name.trim());
   const offices=(window.clOffices||[]).filter(o=>o.name.trim());
-  const data={name,tax,tel:ge('cf-tel')?.value.trim()||'',fax:ge('cf-fax')?.value.trim()||'',taxType:ge('cf-taxtype')?.value||'extra',
+  const data={name,tax,code,tel:ge('cf-tel')?.value.trim()||'',fax:ge('cf-fax')?.value.trim()||'',taxType:ge('cf-taxtype')?.value||'extra',
     zip:ge('cf-zip')?.value.trim()||'',addr:ge('cf-addr')?.value.trim()||'',offices,contacts};
   if(id==='-1'||id===-1){
     data.id=String(Date.now());
@@ -1977,8 +1980,127 @@ function newQuote(){
   try{localStorage.setItem('qs_last_tab','quote');}catch(e){}
 }
 
+// ===== 產生預設檔名 =====
+function getDefaultFilename(ext){
+  const num = document.getElementById('q-num')?.value?.trim() || '';
+  const clCode = (selectedClient?.code||'').trim();
+  const firstItem = (items && items.length > 0) ? (items[0].desc||'').trim() : '';
+  const parts = [num, clCode, firstItem ? firstItem+'等一批' : ''].filter(Boolean);
+  const base = parts.join('_').replace(/[/\\:*?"<>|]/g, '');
+  return (base || '報價單') + '.' + ext;
+}
+
 // ===== BOOT =====
 initApp();
+
+// 手機版：顯示下載按鈕，隱藏列印按鈕
+if(window.innerWidth <= 768){
+  const btnPrint = document.getElementById('btn-print-pdf');
+  const btnDown  = document.getElementById('btn-download-img');
+  if(btnPrint) btnPrint.style.display = 'none';
+  if(btnDown)  btnDown.style.display  = '';
+}
+
+// ===== 下載圖片（手機版）=====
+async function downloadImage(){
+  const paper = document.querySelector('#tab-quote .quote-paper');
+  if(!paper){ showToast('請先開啟報價單'); return; }
+  if(typeof html2canvas==='undefined'){ showToast('截圖模組載入中，請稍候'); return; }
+
+  showToast('準備下載中…', 10000);
+
+  // Step 1: img 轉 PNG base64
+  const imgs = Array.from(paper.querySelectorAll('img'));
+  const origSrcs = imgs.map(img => img.src);
+  await Promise.all(imgs.map(img => new Promise(resolve => {
+    if(!img.src){ resolve(); return; }
+    const tmp = new Image();
+    tmp.onload = () => {
+      try {
+        const cv = document.createElement('canvas');
+        cv.width = tmp.naturalWidth||300;
+        cv.height = tmp.naturalHeight||120;
+        cv.getContext('2d').drawImage(tmp, 0, 0, cv.width, cv.height);
+        const png = cv.toDataURL('image/png');
+        if(png !== 'data:,') img.src = png;
+      } catch(e){}
+      resolve();
+    };
+    tmp.onerror = () => resolve();
+    tmp.src = img.src;
+  })));
+
+  // Step 2: clone paper，在 clone 上套桌機版樣式
+  const clone = paper.cloneNode(true);
+
+  // 同步 img src（已轉成 base64）
+  const cloneImgs = clone.querySelectorAll('img');
+  imgs.forEach((img, i) => { if(cloneImgs[i]) cloneImgs[i].src = img.src; });
+
+  // 套桌機版 inline style（不動原始 paper）
+  clone.style.cssText = [
+    'font-size:13.9px',
+    'width:680px',
+    'max-width:680px',
+    'padding:36px 42px',
+    'box-shadow:none',
+    'border-radius:0',
+    'margin:0',
+    'box-sizing:border-box',
+    'position:fixed',
+    'top:0',
+    'left:0',
+    'z-index:99997',
+    'background:white',
+    'opacity:0',
+    'pointer-events:none',
+  ].join(';');
+
+  // 修正 clone 內的 layout
+  const titleEl = clone.querySelector('.qp-title');
+  const headerEl = clone.querySelector('.qp-header');
+  if(titleEl) titleEl.style.cssText = 'position:absolute!important;top:50%!important;transform:translateY(-50%)!important;left:0!important;right:0!important;text-align:center!important;';
+  if(headerEl) headerEl.style.cssText = 'display:flex!important;flex-wrap:nowrap!important;position:relative!important;align-items:center!important;';
+
+  document.body.appendChild(clone);
+  await new Promise(r => setTimeout(r, 300));
+
+  // Step 3: 截圖
+  let canvas;
+  try {
+    canvas = await html2canvas(clone, {
+      scale: 2,
+      useCORS: false,
+      allowTaint: false,
+      backgroundColor: '#ffffff',
+      logging: false,
+      imageTimeout: 0,
+      width: 680,
+      height: clone.scrollHeight,
+      windowWidth: 680,
+      x: 0,
+      y: 0,
+      scrollX: 0,
+      scrollY: 0,
+    });
+  } catch(err) {
+    document.body.removeChild(clone);
+    imgs.forEach((img, i) => { img.src = origSrcs[i]; });
+    showToast('下載失敗，請再試一次');
+    return;
+  }
+
+  // Step 4: 移除 clone，還原 img
+  document.body.removeChild(clone);
+  imgs.forEach((img, i) => { img.src = origSrcs[i]; });
+
+  // Step 5: 下載
+  const link = document.createElement('a');
+  link.download = getDefaultFilename('jpg');
+  link.href = canvas.toDataURL('image/jpeg', 0.85);
+  link.click();
+  showToast('✅ 圖片已下載！');
+}
 
 // ===== 列印：html2canvas 截圖 =====
 async function printQuote(){
