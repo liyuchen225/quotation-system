@@ -1171,7 +1171,7 @@ function renderPreviewTo(ids, co, cl, salesIdx, contactIdx, qtItems, disc, taxRa
   const theadTr = ge(ids.theadTr); if(theadTr) theadTr.style.background = brandColor;
   // grand td 顏色（tbody 內）
   const totalsEl = ge(ids.totals);
-  if(totalsEl) totalsEl.querySelectorAll('tr.grand td').forEach(td=>td.style.color=brandColor);
+  if(totalsEl) totalsEl.querySelectorAll('tr.grand td').forEach(td=>{td.style.color=brandColor;td.style.borderTopColor=brandColor;});
   const notesWrap = ge(ids.notesWrap); if(notesWrap) notesWrap.style.borderLeftColor = brandColor;
 
   // Logo
@@ -1267,7 +1267,7 @@ function renderPreviewTo(ids, co, cl, salesIdx, contactIdx, qtItems, disc, taxRa
     if(taxRate>0)th+=`<tr><td style="color:#333">稅金（${taxRate}%）</td><td>$${fmt(taxAmt)}</td></tr>`;
     th+=`<tr class="grand"><td>總金額</td><td>$${fmt(total)}</td></tr>`;
   }
-  if(totalsEl){totalsEl.innerHTML=th;totalsEl.querySelectorAll('tr.grand td').forEach(td=>td.style.color=brandColor);}
+  if(totalsEl){totalsEl.innerHTML=th;totalsEl.querySelectorAll('tr.grand td').forEach(td=>{td.style.color=brandColor;td.style.borderTopColor=brandColor;});}
 
   // 簽名欄
   const sigEl = ge(ids.signers);
