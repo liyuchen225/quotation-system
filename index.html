@@ -836,7 +836,7 @@ async function initApp(){
           const sid=String(co.id);
           const cached=cachedCos.find(cc=>String(cc.id)===sid);
           return{...co,id:sid,logo:co.logo||cached?.logo||'',code:co.code||cached?.code||'',
-            zip:co.zip||cached?.zip||'',addr:co.addr||cached?.addr||'',tel:co.tel||cached?.tel||'',
+            zip:co.zip||cached?.zip||'',city:co.city||cached?.city||'',addr:co.addr||cached?.addr||'',tel:co.tel||cached?.tel||'',
             email:co.email||cached?.email||'',bankName:co.bankName||cached?.bankName||'',
             bankAcct:co.bankAcct||cached?.bankAcct||'',brandColor:co.brandColor||cached?.brandColor||'#185FA5',
             contacts:(co.contacts||[]).map(p=>({...p,id:String(p.id||'')}))};
@@ -844,7 +844,7 @@ async function initApp(){
         companies=dedupeById(mapped);
       }else if(cachedCos.length){companies=dedupeById(cachedCos);}
       if(result.clients?.length){
-        const mapped=result.clients.map(cl=>({...cl,id:String(cl.id),name:cl.name||'',tax:cl.tax||'',tel:cl.tel||'',taxType:cl.taxType||'extra',zip:cl.zip||'',addr:cl.addr||'',
+        const mapped=result.clients.map(cl=>({...cl,id:String(cl.id),name:cl.name||'',tax:cl.tax||'',tel:cl.tel||'',taxType:cl.taxType||'extra',zip:cl.zip||'',city:cl.city||'',addr:cl.addr||'',
           fax:cl.fax||'',offices:(cl.offices||[]),contacts:(cl.contacts||[]).map(p=>({...p,id:String(p.id||''),name:p.name||'',dept:p.dept||'',title:p.title||'',ext:p.ext||'',email:p.email||'',mobile:p.mobile||'',note:p.note||'',officeIdx:p.officeIdx??null}))}));
         clients=dedupeById(mapped);
       }else if(cachedCls.length){clients=dedupeById(cachedCls);}
@@ -1098,7 +1098,7 @@ function pickClient(id){
 function renderClientCard(){
   const cl=selectedClient;
   ge('q-cl-name-badge').textContent=cl.name;
-  ge('q-cl-base').innerHTML=`統編：${cl.tax}${cl.tel?' ／ '+cl.tel:''}<br>${cl.zip?cl.zip+' ':''}${cl.addr||''}`;
+  ge('q-cl-base').innerHTML=`統編：${cl.tax}${cl.tel?' ／ '+cl.tel:''}<br>${cl.zip?cl.zip+' ':''}${cl.city||''}${cl.addr||''}`;
   const pills=ge('q-contact-pills');
   pills.innerHTML=(cl.contacts||[]).length
     ?cl.contacts.map((p,i)=>`<span class="cpill${selectedContactIdx===i?' active':''}" onclick="toggleContact(${i})" title="${p.dept||''}${p.title?' '+p.title:''}${p.ext?' 分機：'+p.ext:''}">${p.name}${p.dept?' · '+p.dept:''}</span>`).join('')
@@ -1190,8 +1190,9 @@ function renderPreviewTo(ids, co, cl, salesIdx, contactIdx, qtItems, disc, taxRa
     if(coNameEl){coNameEl.style.display='block';coNameEl.textContent=co?co.name:'（請選擇出單公司）';}
   if(coSubEl){
     if(co){
-      const rawCoAddr=co.addr||'';
-      const fmtCoAddr=rawCoAddr.replace(/(區)/g,'$1<wbr>');
+      const cityPart=(co.city||'').replace(/(區)/g,'$1<wbr>');
+      const addrPart=(co.addr||'').replace(/(區)/g,'$1<wbr>');
+      const fmtCoAddr=cityPart+addrPart;
       let s=`${co.zip?co.zip+' ':''}${fmtCoAddr}<br>${co.tel}${co.email?' ／ '+co.email:''}${co.tax?'<br>統編：'+co.tax:''}`;
       if(sp)s+=`<br>業務：${sp.name}${sp.title?' ('+sp.title+')':''}${sp.phone?' ／ '+sp.phone:''}`;
       coSubEl.innerHTML=s;
@@ -1215,9 +1216,10 @@ function renderPreviewTo(ids, co, cl, salesIdx, contactIdx, qtItems, disc, taxRa
     }
     // 詳細資訊寫到 clBlock
     let detail = '';
-    if(cl.zip||cl.addr){
-      const rawAddr=cl.addr||'';
-      const fmtAddr=rawAddr.replace(/(區)/g,'$1<wbr>');
+    if(cl.zip||cl.city||cl.addr){
+      const cityPart=(cl.city||'').replace(/(區)/g,'$1<wbr>');
+      const addrPart=(cl.addr||'').replace(/(區)/g,'$1<wbr>');
+      const fmtAddr=cityPart+addrPart;
       detail+=`${cl.zip?cl.zip+' ':''}${fmtAddr}`;
     }
     if(cl.tel) detail+=`<br>${cl.tel}`;
@@ -1388,7 +1390,8 @@ function clientForm(cl){
     </select>
   </div>
   <div class="field"><label>公司郵遞區號</label><input id="cf-zip" value="${v('zip')}" placeholder="例：106"></div>
-  <div class="field" style="grid-column:1/-1"><label>公司地址</label><input id="cf-addr" value="${v('addr')}"></div>
+  <div class="field"><label>城市/區域</label><input id="cf-city" value="${v('city')}" placeholder="例：台北市信義區"></div>
+  <div class="field" style="grid-column:1/-1"><label>地址</label><input id="cf-addr" value="${v('addr')}" placeholder="例：信義路五段7號"></div>
   <div class="section-sep">辦公室（可多處）</div>
   <div class="person-section">
     <table class="person-table" id="cl-office-table">
@@ -1488,7 +1491,7 @@ function saveClientForm(id){
   const contacts=Array.from(contactMap.values());
   const offices=(window.clOffices||[]).filter(o=>o.name.trim());
   const data={name,tax,code,tel:ge('cf-tel')?.value.trim()||'',fax:ge('cf-fax')?.value.trim()||'',taxType:ge('cf-taxtype')?.value||'extra',
-    zip:ge('cf-zip')?.value.trim()||'',addr:ge('cf-addr')?.value.trim()||'',offices,contacts};
+    zip:ge('cf-zip')?.value.trim()||'',city:ge('cf-city')?.value.trim()||'',addr:ge('cf-addr')?.value.trim()||'',offices,contacts};
   if(id==='-1'||id===-1){
     data.id=String(Date.now());
     clients.push(data);
@@ -1529,7 +1532,7 @@ function renderCoList(){
 }
 function newCo(){
   editingCoId=null;renderCoList();
-  const tempCo={id:'new_'+Date.now(),name:'',code:'',tax:'',zip:'',addr:'',tel:'',email:'',contacts:[],bankName:'',bankAcct:'',logo:'',brandColor:'#185FA5'};
+  const tempCo={id:'new_'+Date.now(),name:'',code:'',tax:'',zip:'',city:'',addr:'',tel:'',email:'',contacts:[],bankName:'',bankAcct:'',logo:'',brandColor:'#185FA5'};
   ge('co-form-area').innerHTML=coForm(tempCo,true);
 }
 function editCo(id){
@@ -1579,8 +1582,8 @@ function coForm(co,isNew=false){
   </div>
   <div class="field"><label>統一編號</label><input id="cof-tax" value="${v('tax')}" inputmode="numeric" maxlength="8"></div>
   <div class="field"><label>郵遞區號</label><input id="cof-zip" value="${v('zip')}" placeholder="例：110"></div>
-  <div class="field"></div>
-  <div class="field" style="grid-column:1/-1"><label>公司地址</label><input id="cof-addr" value="${v('addr')}"></div>
+  <div class="field"><label>城市/區域</label><input id="cof-city" value="${v('city')}" placeholder="例：台北市信義區"></div>
+  <div class="field" style="grid-column:1/-1"><label>地址</label><input id="cof-addr" value="${v('addr')}" placeholder="例：信義路五段7號"></div>
   <div class="field"><label>總機電話</label><input id="cof-tel" value="${v('tel')}"></div>
   <div class="field"><label>公司信箱</label><input id="cof-email" value="${v('email')}"></div>
   <div class="section-sep">公司 Logo</div>
@@ -1678,7 +1681,7 @@ function refreshCoTable(){
 function saveCoForm(id,isNew='false'){
   const name=ge('cof-name')?.value.trim();if(!name){alert('請輸入公司名稱');return;}
   const data={name,code:ge('cof-code')?.value.trim(),tax:ge('cof-tax')?.value.trim()||'',brandColor:ge('cof-color')?.value||'#185FA5',invoice:ge('cof-invoice')?.value||'yes',
-    zip:ge('cof-zip')?.value.trim(),addr:ge('cof-addr')?.value.trim(),tel:ge('cof-tel')?.value.trim(),email:ge('cof-email')?.value.trim(),
+    zip:ge('cof-zip')?.value.trim(),city:ge('cof-city')?.value.trim()||'',addr:ge('cof-addr')?.value.trim(),tel:ge('cof-tel')?.value.trim(),email:ge('cof-email')?.value.trim(),
     contacts:(window.coContacts||[]).filter(p=>p.name.trim()),bankName:ge('cof-bank')?.value.trim(),bankAcct:ge('cof-acct')?.value.trim()};
   if(isNew==='true'||isNew===true){data.id=String(Date.now());data.logo='';companies.push(data);}
   else{const i=companies.findIndex(c=>String(c.id)===String(id));if(i<0){alert('找不到公司資料');return;}data.id=String(id);data.logo=companies[i].logo||'';companies[i]=data;}
