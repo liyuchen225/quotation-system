@@ -139,6 +139,7 @@ table.qi col:nth-child(6){width:15%}  /* 小計 */
 table.qi thead tr{background:#185FA5}
 table.qi th{padding:0.5em 0.58em;font-size:0.76em;text-transform:uppercase;letter-spacing:.06em;color:#fff;font-weight:600;text-align:left}
 table.qi td{padding:0.5em 0.58em;border-bottom:1px solid #d0dae8;font-size:0.91em;color:#1a1a1a}
+table.qi td.qi-remark{font-size:10.5px;color:#666;padding-top:1px;padding-bottom:2px;line-height:1.3}
 table.qi td.r{text-align:right}
 /* 匯款+總金額：grid 兩欄各50%，與 qp-info 架構相同 */
 /* 匯款+總金額：flex，左欄佔剩餘空間，右欄固定約50% */
@@ -281,17 +282,18 @@ table.qi td.r{text-align:right}
     margin-bottom:0!important;
     line-height:1.2;
   }
-  /* 公司/客戶名稱：固定 11px，不用 em */
-  /* 手機：公司/客戶名稱統一 11px，兩側完全相同 */
-  .qp-co-name{font-size:11px!important;font-weight:600!important;line-height:1.35}
+  /* 公司/客戶名稱：手機版 10px，比「報價單」標題（約 11.9px）小一點 */
+  .qp-co-name{font-size:10px!important;font-weight:600!important;line-height:1.35}
   .qp-label{font-size:0.7em!important}
   .qp-detail-cell{font-size:0.82em!important;line-height:1.5!important}
   /* 客戶名稱 span：強制覆蓋 inline style */
-  .qp-block p>span:first-child{font-size:11px!important;font-weight:600!important}
+  .qp-block p>span:first-child{font-size:10px!important;font-weight:600!important}
   /* 問題3：左右資訊欄字體/行距完全一致 */
   .qp-block h4{font-size:0.76em;line-height:1.4;margin-bottom:0.3em}
   .qp-block p{font-size:0.84em;line-height:1.5;color:#444}
   .qp-co-sub{font-size:0.84em!important;line-height:1.5!important;color:#444!important;word-break:break-word;overflow-wrap:anywhere}
+  /* 地址尾巴（街路+號）包 inline-block：行寬不夠時整段跳下一行，不會在 city 中間斷 */
+  .qp-addr-tail{display:inline-block;max-width:100%;overflow-wrap:anywhere}
   /* 手機：匯款+總金額 flex，左欄佔剩餘空間，右欄固定50% */
   .qp-bottom-row{display:flex!important;flex-direction:row!important;gap:0.5em!important;align-items:flex-start!important}
   .qp-bank-cell{flex:1!important;min-width:0!important}
@@ -314,6 +316,8 @@ table.qi td.r{text-align:right}
   table.qi th:nth-child(4),table.qi td:nth-child(4){white-space:nowrap}
   table.qi th:nth-child(5),table.qi td:nth-child(5){white-space:nowrap}
   table.qi th:nth-child(6),table.qi td:nth-child(6){white-space:nowrap}
+  /* 品項備註：手機版降為品名的 80%（品名=0.91em，0.91×0.8≈0.73em）*/
+  table.qi td.qi-remark{font-size:0.73em!important;line-height:1.35}
   /* ── 報價單管理頁 ── */
   #tab-quotes>div{grid-template-columns:1fr!important;min-height:auto}
   #tab-quotes>div>div:first-child{border-right:none;border-bottom:1px solid var(--border)}
@@ -1161,6 +1165,7 @@ function fmtPrice(n, forceInt=false){
 
 // 把 zip / city / addr 組成一行，城市跟地址之間放 <wbr>，
 // 行寬夠就一行；不夠時瀏覽器從 city 後面斷開、地址跳下一行。
+// 手機版地址會被 .qp-addr-tail 包成 inline-block，確保整段地址完整跳行不會在中間斷字。
 // 舊資料（city 空、addr 含完整地址）保留「區之後可斷」的舊行為。
 function fmtAddr(zip, city, addr){
   const z=zip?zip+' ':'';
@@ -1169,7 +1174,7 @@ function fmtAddr(zip, city, addr){
     return z+legacy;
   }
   if(!addr) return z+city;
-  return z+city+'<wbr>'+addr;
+  return z+city+'<wbr><span class="qp-addr-tail">'+addr+'</span>';
 }
 
 function renderPreviewTo(ids, co, cl, salesIdx, contactIdx, qtItems, disc, taxRate, num, date, validity, notes){
@@ -1259,7 +1264,7 @@ function renderPreviewTo(ids, co, cl, salesIdx, contactIdx, qtItems, disc, taxRa
     const tr = document.createElement('tr');
     tr.innerHTML = `<td>${i+1}</td><td>${it.desc}</td><td class="r">${fmt(it.qty)}</td><td class="r">${it.unit||''}</td><td class="r">$${fmtPrice(it.price,forceInt)}</td><td class="r">$${fmt(amt)}</td>`;
     tbody.appendChild(tr);
-    if(it.remark){const tr2=document.createElement('tr');tr2.innerHTML=`<td></td><td colspan="5" style="font-size:10.5px;color:#666;padding-top:1px;padding-bottom:2px;line-height:1.3;border-bottom:1px solid #d0dae8">　${it.remark}</td>`;tbody.appendChild(tr2);}
+    if(it.remark){const tr2=document.createElement('tr');tr2.innerHTML=`<td></td><td colspan="5" class="qi-remark">　${it.remark}</td>`;tbody.appendChild(tr2);}
   });
 
   // 小計/稅金/總計
