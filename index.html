@@ -1098,7 +1098,7 @@ function pickClient(id){
 function renderClientCard(){
   const cl=selectedClient;
   ge('q-cl-name-badge').textContent=cl.name;
-  ge('q-cl-base').innerHTML=`統編：${cl.tax}${cl.tel?' ／ '+cl.tel:''}<br>${cl.zip?cl.zip+' ':''}${cl.city||''}${cl.addr||''}`;
+  ge('q-cl-base').innerHTML=`統編：${cl.tax}${cl.tel?' ／ '+cl.tel:''}<br>${fmtAddr(cl.zip, cl.city, cl.addr)}`;
   const pills=ge('q-contact-pills');
   pills.innerHTML=(cl.contacts||[]).length
     ?cl.contacts.map((p,i)=>`<span class="cpill${selectedContactIdx===i?' active':''}" onclick="toggleContact(${i})" title="${p.dept||''}${p.title?' '+p.title:''}${p.ext?' 分機：'+p.ext:''}">${p.name}${p.dept?' · '+p.dept:''}</span>`).join('')
@@ -1158,6 +1158,20 @@ function fmtPrice(n, forceInt=false){
 // ===== 共用渲染核心 =====
 // ids: { logo, title, num, date, validity, coName, coSub, bankBlock, clBlock,
 //         itemsBody, theadTr, totals, notesEl, signers, footerNum, notesWrap }
+
+// 把 zip / city / addr 組成一行，城市跟地址之間放 <wbr>，
+// 行寬夠就一行；不夠時瀏覽器從 city 後面斷開、地址跳下一行。
+// 舊資料（city 空、addr 含完整地址）保留「區之後可斷」的舊行為。
+function fmtAddr(zip, city, addr){
+  const z=zip?zip+' ':'';
+  if(!city){
+    const legacy=(addr||'').replace(/(區)/g,'$1<wbr>');
+    return z+legacy;
+  }
+  if(!addr) return z+city;
+  return z+city+'<wbr>'+addr;
+}
+
 function renderPreviewTo(ids, co, cl, salesIdx, contactIdx, qtItems, disc, taxRate, num, date, validity, notes){
   const sp = salesIdx!=null ? co?.contacts?.[salesIdx] : null;
   const cp = contactIdx!=null ? cl?.contacts?.[contactIdx] : null;
@@ -1190,10 +1204,8 @@ function renderPreviewTo(ids, co, cl, salesIdx, contactIdx, qtItems, disc, taxRa
     if(coNameEl){coNameEl.style.display='block';coNameEl.textContent=co?co.name:'（請選擇出單公司）';}
   if(coSubEl){
     if(co){
-      const cityPart=(co.city||'').replace(/(區)/g,'$1<wbr>');
-      const addrPart=(co.addr||'').replace(/(區)/g,'$1<wbr>');
-      const fmtCoAddr=cityPart+addrPart;
-      let s=`${co.zip?co.zip+' ':''}${fmtCoAddr}<br>${co.tel}${co.email?' ／ '+co.email:''}${co.tax?'<br>統編：'+co.tax:''}`;
+      const fmtCoAddr=fmtAddr(co.zip, co.city, co.addr);
+      let s=`${fmtCoAddr}<br>${co.tel}${co.email?' ／ '+co.email:''}${co.tax?'<br>統編：'+co.tax:''}`;
       if(sp)s+=`<br>業務：${sp.name}${sp.title?' ('+sp.title+')':''}${sp.phone?' ／ '+sp.phone:''}`;
       coSubEl.innerHTML=s;
     }else{coSubEl.innerHTML='';}
@@ -1217,10 +1229,7 @@ function renderPreviewTo(ids, co, cl, salesIdx, contactIdx, qtItems, disc, taxRa
     // 詳細資訊寫到 clBlock
     let detail = '';
     if(cl.zip||cl.city||cl.addr){
-      const cityPart=(cl.city||'').replace(/(區)/g,'$1<wbr>');
-      const addrPart=(cl.addr||'').replace(/(區)/g,'$1<wbr>');
-      const fmtAddr=cityPart+addrPart;
-      detail+=`${cl.zip?cl.zip+' ':''}${fmtAddr}`;
+      detail+=fmtAddr(cl.zip, cl.city, cl.addr);
     }
     if(cl.tel) detail+=`<br>${cl.tel}`;
     if(cp) detail+=`<br>${cp.name}${cp.title?' ('+cp.title+')':''}${cp.ext?' 分機：'+cp.ext:''}`;
