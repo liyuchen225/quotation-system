@@ -1350,7 +1350,14 @@ function officeSelectOptions(selectedIdx){
 function clientForm(cl){
   const v=(x)=>cl?escHtml(cl[x]||''):'';
   window.clOffices=(cl?.offices||[]).map(o=>({...o}));
-  window.clContacts=(cl?.contacts||[]).map(p=>({...p,officeIdx:p.officeIdx??null}));
+  // 載入時先去重，避免雲端/本機資料已有重複
+  const rawCl=(cl?.contacts||[]).map(p=>({...p,officeIdx:p.officeIdx??null}));
+  const clContactMap=new Map();
+  rawCl.forEach(p=>{
+    const key=(p.name||'').trim()+'|'+(p.dept||'').trim()+'|'+(p.ext||'').trim();
+    if(!clContactMap.has(key)) clContactMap.set(key,p);
+  });
+  window.clContacts=Array.from(clContactMap.values());
   const rows=()=>{
     const hasOffices=(window.clOffices||[]).length>0;
     return window.clContacts.map((p,i)=>`<tr>
@@ -1471,7 +1478,14 @@ function saveClientForm(id){
   }
 
   const code=ge('cf-code')?.value.trim()||'';
-  const contacts=(window.clContacts||[]).filter(p=>p.name.trim());
+  // contacts 去重：以 name+dept+ext 為複合 key
+  const rawContacts=(window.clContacts||[]).filter(p=>p.name.trim());
+  const contactMap=new Map();
+  rawContacts.forEach(p=>{
+    const key=(p.name||'').trim()+'|'+(p.dept||'').trim()+'|'+(p.ext||'').trim();
+    if(!contactMap.has(key)) contactMap.set(key,p);
+  });
+  const contacts=Array.from(contactMap.values());
   const offices=(window.clOffices||[]).filter(o=>o.name.trim());
   const data={name,tax,code,tel:ge('cf-tel')?.value.trim()||'',fax:ge('cf-fax')?.value.trim()||'',taxType:ge('cf-taxtype')?.value||'extra',
     zip:ge('cf-zip')?.value.trim()||'',addr:ge('cf-addr')?.value.trim()||'',offices,contacts};
