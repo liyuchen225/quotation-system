@@ -2036,8 +2036,7 @@ async function downloadImage(){
     'left:0',
     'z-index:99997',
     'background:white',
-    'opacity:0',
-    'pointer-events:none',
+    'visibility:hidden',
   ].join(';');
 
   // 修正 clone 內的 layout
@@ -2047,6 +2046,7 @@ async function downloadImage(){
   if(headerEl) headerEl.style.cssText = 'display:flex!important;flex-wrap:nowrap!important;position:relative!important;align-items:center!important;';
 
   document.body.appendChild(clone);
+  clone.style.visibility = 'visible';
   await new Promise(r => setTimeout(r, 300));
 
   // Step 3: 截圖
