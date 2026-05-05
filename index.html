@@ -228,23 +228,7 @@ table.qi td.r{text-align:right}
   }
 }
 
-/* 手機列印：只調整 font-size 讓內容縮小以符合一頁 */
-@media print and (max-width:768px){
-  .quote-paper{
-    font-size:2.8mm!important;
-    padding:4mm 5mm!important;
-  }
-  .qp-co-name{font-size:3.2mm!important;}
-}
 
-/* ── 手機列印：只覆寫字體和 padding ── */
-@media print and (max-width:768px){
-  .quote-paper{
-    font-size:2.8mm!important;
-    padding:4mm 5mm!important;
-  }
-  .qp-co-name{font-size:3.2mm!important;}
-}
 
 /* iPad */
 @media(min-width:769px) and (max-width:1024px){
@@ -2186,10 +2170,15 @@ async function printQuote(){
   snap.appendChild(imgEl);
   document.body.insertBefore(snap, document.body.firstChild);
 
+  // 暫時改 title 作為 PDF 檔名
+  const origTitle = document.title;
+  document.title = getDefaultFilename('pdf').replace('.pdf','');
+
   await new Promise(r => setTimeout(r, 300));
   window.print();
 
   setTimeout(() => {
+    document.title = origTitle;
     const s = document.getElementById('print-snapshot');
     if(s && s.parentNode) s.parentNode.removeChild(s);
   }, 2000);
