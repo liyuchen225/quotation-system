@@ -214,21 +214,39 @@ table.qi td.r{text-align:right}
 @media print{
   @page{size:A4 portrait;margin:0}
   *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
-  body>*{display:none!important}
-  #print-snapshot{
-    display:block!important;
-    position:fixed!important;
-    top:0!important;left:0!important;right:0!important;bottom:0!important;
-    width:100%!important;height:100%!important;
-    margin:0!important;padding:0!important;
+
+  /* 列印模式：印 .quote-paper.printing（已被 JS 暫時搬到 body 底下），其他通通隱藏 */
+  body.printing-mode > *{display:none!important}
+  body.printing-mode > .quote-paper.printing{display:block!important}
+
+  /* 列印的紙張：強制套桌機版尺寸跟 padding，覆蓋手機版的 responsive CSS */
+  body.printing-mode > .quote-paper.printing{
+    position:static!important;
+    margin:0 auto!important;
+    width:680px!important;max-width:680px!important;
+    padding:36px 42px!important;
+    font-size:13.9px!important;
     background:white!important;
+    box-shadow:none!important;border-radius:0!important;
+    box-sizing:border-box!important;
   }
-  #print-snapshot img{
-    display:block!important;
-    width:100%!important;
-    height:auto!important;
-    margin:0!important;padding:0!important;
+  /* header / title / 公司名稱 / logo：覆蓋手機版的 wrap 與小字尺寸 */
+  body.printing-mode > .quote-paper.printing .qp-header{
+    display:flex!important;flex-wrap:nowrap!important;align-items:center!important;
+    margin-bottom:0.6em!important;gap:0.9em!important;position:relative!important;
   }
+  body.printing-mode > .quote-paper.printing .qp-title{
+    font-size:1.25em!important;text-align:center!important;
+    position:absolute!important;top:50%!important;transform:translateY(-50%)!important;
+    left:0!important;right:0!important;
+  }
+  body.printing-mode > .quote-paper.printing .qp-co-name{font-size:16px!important}
+  body.printing-mode > .quote-paper.printing .qp-logo{height:60px!important}
+  body.printing-mode > .quote-paper.printing .qp-logo img{
+    height:60px!important;max-width:220px!important;width:auto!important;object-fit:contain!important;
+  }
+  /* qi-remark（品項備註）強制走桌機字級，避免手機 0.73em 規則生效 */
+  body.printing-mode > .quote-paper.printing .qi-remark{font-size:10.5px!important}
 }
 
 
@@ -2268,7 +2286,7 @@ function getDefaultFilename(ext){
 }
 
 // ===== BOOT =====
-console.log('%c[報價單系統] BUILD: 2026-05-06-r5 SVG-size-fix','background:#185FA5;color:#fff;padding:4px 8px;border-radius:3px;font-weight:bold');
+console.log('%c[報價單系統] BUILD: 2026-05-06-r6 native-print','background:#185FA5;color:#fff;padding:4px 8px;border-radius:3px;font-weight:bold');
 initApp();
 
 // 手機版：顯示下載按鈕，隱藏列印按鈕
@@ -2311,7 +2329,13 @@ async function rasterizeAllImages(paper){
         cv.getContext('2d').drawImage(tmp, 0, 0, w, h);
         const png = cv.toDataURL('image/png');
         if(png !== 'data:,') img.src = png;
-      } catch(e){ console.warn('Logo raster 失敗:', e); }
+        console.log('[rasterizeAllImages] OK', {
+          isSvg,
+          srcType: img.src.startsWith('data:image/svg') ? 'SVG' : (img.src.startsWith('data:image/png') ? 'PNG' : 'OTHER'),
+          naturalSize: tmp.naturalWidth + 'x' + tmp.naturalHeight,
+          canvasSize: w + 'x' + h,
+        });
+      } catch(e){ console.warn('[rasterizeAllImages] 失敗:', e); }
       resolve();
     };
     tmp.onerror = () => resolve();
@@ -2421,107 +2445,45 @@ async function downloadImage(){
 async function printQuote(){
   const paper = document.querySelector('#tab-quote .quote-paper');
   if(!paper){ showToast('請先開啟報價單'); return; }
-  if(typeof html2canvas==='undefined'){ showToast('截圖模組載入中，請稍候'); return; }
 
-  showToast('準備列印中…', 10000);
-
-  // img 轉 PNG base64（共用 helper，能正確處理 SVG）
-  const { imgs, origSrcs } = await rasterizeAllImages(paper);
-
-  // 注入桌機版 style
-  const origStyle = paper.getAttribute('style') || '';
-  const titleEl = paper.querySelector('.qp-title');
-  const headerEl = paper.querySelector('.qp-header');
-  const origTitleStyle = titleEl ? titleEl.getAttribute('style')||'' : '';
-  const origHeaderStyle = headerEl ? headerEl.getAttribute('style')||'' : '';
-
-  paper.style.cssText =
-    'font-size:13.9px!important;width:680px!important;max-width:680px!important;' +
-    'padding:36px 42px!important;box-shadow:none!important;border-radius:0!important;' +
-    'margin:0!important;box-sizing:border-box!important;position:fixed!important;' +
-    'top:0!important;left:0!important;z-index:99999!important;background:white!important;';
-  if(titleEl) titleEl.style.cssText = 'position:absolute!important;top:50%!important;transform:translateY(-50%)!important;left:0!important;right:0!important;text-align:center!important;';
-  if(headerEl) headerEl.style.cssText = 'display:flex!important;flex-wrap:nowrap!important;position:relative!important;align-items:center!important;';
-
-  // 修正 position:fixed 造成 em 基準跑掉的問題
-  // logo 高度、名稱字體全部改用 px
-  const logoEl = paper.querySelector('.qp-logo');
-  const logoImgEl = paper.querySelector('.qp-logo img');
-  const origLogoStyle = logoEl ? logoEl.getAttribute('style')||'' : '';
-  const origLogoImgStyle = logoImgEl ? logoImgEl.getAttribute('style')||'' : '';
-  const coNameEls = paper.querySelectorAll('.qp-co-name');
-  const origCoNameStyles = Array.from(coNameEls).map(el => el.getAttribute('style')||'');
-
-  // logo: 4.3em × 13.9px = 59.8px
-  if(logoEl) logoEl.style.setProperty('height','60px','important');
-  if(logoImgEl){
-    logoImgEl.style.setProperty('height','60px','important');
-    logoImgEl.style.setProperty('max-width','220px','important');
-    logoImgEl.style.setProperty('width','auto','important');
-    logoImgEl.style.setProperty('object-fit','contain','important');
-  }
-  // 名稱固定 16px
-  coNameEls.forEach(el => el.style.setProperty('font-size','16px','important'));
-
-  await new Promise(r => setTimeout(r, 300));
-
-  let canvas;
-  try {
-    canvas = await html2canvas(paper, {
-      scale: 2,
-      useCORS: false,
-      allowTaint: false,
-      backgroundColor: '#ffffff',
-      logging: false,
-      imageTimeout: 0,
-      width: 680,
-      height: paper.scrollHeight,
-      windowWidth: 680,
-      x: 0, y: 0, scrollX: 0, scrollY: 0,
-    });
-  } catch(err) {
-    paper.setAttribute('style', origStyle);
-    if(titleEl) titleEl.setAttribute('style', origTitleStyle);
-    if(headerEl) headerEl.setAttribute('style', origHeaderStyle);
-    if(logoEl) logoEl.setAttribute('style', origLogoStyle);
-    if(logoImgEl) logoImgEl.setAttribute('style', origLogoImgStyle);
-    coNameEls.forEach((el,i) => el.setAttribute('style', origCoNameStyles[i]));
-    imgs.forEach((img, i) => { img.src = origSrcs[i]; });
-    showToast('列印失敗，請再試一次');
-    return;
-  }
-
-  // 還原
-  paper.setAttribute('style', origStyle);
-  if(titleEl) titleEl.setAttribute('style', origTitleStyle);
-  if(headerEl) headerEl.setAttribute('style', origHeaderStyle);
-  if(logoEl) logoEl.setAttribute('style', origLogoStyle);
-  if(logoImgEl) logoImgEl.setAttribute('style', origLogoImgStyle);
-  coNameEls.forEach((el,i) => el.setAttribute('style', origCoNameStyles[i]));
-  imgs.forEach((img, i) => { img.src = origSrcs[i]; });
-
-  // 放入 print-snapshot
-  let snap = document.getElementById('print-snapshot');
-  if(snap) snap.parentNode.removeChild(snap);
-  snap = document.createElement('div');
-  snap.id = 'print-snapshot';
-  const imgEl = document.createElement('img');
-  imgEl.src = canvas.toDataURL('image/jpeg', 0.85);
-  snap.appendChild(imgEl);
-  document.body.insertBefore(snap, document.body.firstChild);
+  // 把 paper 暫時搬到 body 底下，並標記 .printing；CSS 會處理「只顯示這張紙、套桌機版尺寸」
+  // 不再走 html2canvas，直接讓瀏覽器原生列印 → 螢幕看到什麼、印出來就是什麼
+  const placeholder = document.createComment('print-placeholder');
+  paper.parentNode.insertBefore(placeholder, paper);
+  document.body.appendChild(paper);
+  paper.classList.add('printing');
+  document.body.classList.add('printing-mode');
 
   // 暫時改 title 作為 PDF 檔名
   const origTitle = document.title;
   document.title = getDefaultFilename('pdf').replace('.pdf','');
 
-  await new Promise(r => setTimeout(r, 300));
-  window.print();
+  // 等 CSS 套用完
+  await new Promise(r => setTimeout(r, 50));
 
-  setTimeout(() => {
+  // 觸發瀏覽器原生列印對話框
+  let cleaned = false;
+  const cleanup = () => {
+    if(cleaned) return;
+    cleaned = true;
+    paper.classList.remove('printing');
+    document.body.classList.remove('printing-mode');
+    if(placeholder.parentNode){
+      placeholder.parentNode.replaceChild(paper, placeholder);
+    }
     document.title = origTitle;
-    const s = document.getElementById('print-snapshot');
-    if(s && s.parentNode) s.parentNode.removeChild(s);
-  }, 2000);
+    window.removeEventListener('afterprint', cleanup);
+  };
+  window.addEventListener('afterprint', cleanup);
+  // 保險：30 秒內若 afterprint 沒觸發就強制還原
+  setTimeout(cleanup, 30000);
+
+  try {
+    window.print();
+  } catch(e) {
+    cleanup();
+    showToast('列印失敗：' + (e.message||e));
+  }
 }
 
 </script>
