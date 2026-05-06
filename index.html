@@ -1122,7 +1122,11 @@ function pickClient(id){
 }
 function renderClientCard(){
   const cl=selectedClient;
-  ge('q-cl-name-badge').textContent=cl.name;
+  // 稅金模式徽章（橘=外加稅、綠=含稅公家）：直接讓使用者一眼看清楚目前抓到的是哪種設定
+  const taxBadge = cl.taxType==='included'
+    ? '<span style="display:inline-block;font-size:10px;background:#28a745;color:#fff;padding:2px 6px;border-radius:3px;margin-left:8px;font-weight:500;vertical-align:middle">含稅（公家）</span>'
+    : '<span style="display:inline-block;font-size:10px;background:#fd7e14;color:#fff;padding:2px 6px;border-radius:3px;margin-left:8px;font-weight:500;vertical-align:middle">外加稅</span>';
+  ge('q-cl-name-badge').innerHTML = escHtml(cl.name||'') + taxBadge;
   ge('q-cl-base').innerHTML=`統編：${cl.tax}${cl.tel?' ／ '+cl.tel:''}<br>${fmtAddr(cl.zip, cl.city, cl.addr)}`;
   const pills=ge('q-contact-pills');
   pills.innerHTML=(cl.contacts||[]).length
