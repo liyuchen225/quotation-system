@@ -159,7 +159,7 @@ table.qi td.r{text-align:right}
 .qp-totals .grand td{font-size:0.95em;font-weight:500;color:var(--blue);border-top:2px solid var(--blue);padding-top:0.5em}
 .qp-notes{margin-top:1.6em;padding:0.94em;background:#f7f9fb;border-radius:0.43em;border-left:3px solid var(--blue)}
 .qp-notes h4{font-size:0.76em;text-transform:uppercase;letter-spacing:.08em;color:#444;margin-bottom:0.36em}
-.qp-notes p{font-size:0.87em;color:#222;line-height:1.7;white-space:pre-wrap}
+.qp-notes p{font-size:0.84em;color:#222;line-height:1.6;white-space:pre-wrap}
 .qp-signer{display:flex;gap:1.15em;margin-top:2.3em}
 .qp-sign-box{flex:1;border-top:1px solid #888;padding-top:0.58em;font-size:0.84em;color:#333;text-align:center;min-height:2.88em}
 .qp-footer{margin-top:1.6em;padding-top:0.86em;border-top:0.5px solid #ccc;display:flex;justify-content:space-between;font-size:0.84em;color:#555}
@@ -327,7 +327,7 @@ table.qi td.r{text-align:right}
   .qp-totals .grand td{font-size:0.9em;padding-top:4px}
   /* 手機：備註行距縮小 */
   .qp-notes{margin-top:0.8em!important;padding:0.5em!important}
-  .qp-notes p{line-height:1.3!important;font-size:0.75em!important}
+  .qp-notes p{line-height:1.5!important;font-size:0.82em!important}
   .qp-notes h4{font-size:0.65em!important;margin-bottom:0.1em!important}
   /* 表格欄位換行控制 */
   table.qi th,table.qi td{white-space:normal;word-break:break-word}
@@ -497,7 +497,7 @@ table.qi td.r{text-align:right}
               <div class="qp-detail-cell" id="p-cl-block" style="color:#ccc"></div>
               <div class="qp-detail-cell qp-detail-right" id="p-co-sub"></div>
             </div>
-            <div class="divider" style="margin:8px 0"></div>
+            
             <table class="qi">
               <colgroup>
                 <col><col><col><col><col><col>
@@ -590,7 +590,7 @@ table.qi td.r{text-align:right}
               <div class="qp-detail-cell" id="q2-cl-block" style="color:#ccc"></div>
               <div class="qp-detail-cell qp-detail-right" id="q2-co-sub"></div>
             </div>
-            <div class="divider" style="margin:8px 0"></div>
+            
             <table class="qi">
               <colgroup>
                 <col><col><col><col><col><col>
@@ -1235,16 +1235,12 @@ function pickClient(id){
 }
 function renderClientCard(){
   const cl=selectedClient;
-  // 稅金模式徽章（橘=外加稅、綠=含稅公家）：直接讓使用者一眼看清楚目前抓到的是哪種設定
-  // 橘色徽章會把原始 taxType 值顯示出來方便除錯
-  const t = cl.taxType;
-  const taxBadge = t==='included'
+  // 稅金模式徽章：橘 = 外加稅 / 綠 = 含稅（公家）
+  const taxBadge = cl.taxType==='included'
     ? '<span style="display:inline-block;font-size:10px;background:#28a745;color:#fff;padding:2px 6px;border-radius:3px;margin-left:8px;font-weight:500;vertical-align:middle">含稅（公家）</span>'
-    : `<span style="display:inline-block;font-size:10px;background:#fd7e14;color:#fff;padding:2px 6px;border-radius:3px;margin-left:8px;font-weight:500;vertical-align:middle" title="點擊客戶管理確認設定">外加稅 [taxType=${JSON.stringify(t)}]</span>`;
+    : '<span style="display:inline-block;font-size:10px;background:#fd7e14;color:#fff;padding:2px 6px;border-radius:3px;margin-left:8px;font-weight:500;vertical-align:middle">外加稅</span>';
   ge('q-cl-name-badge').innerHTML = escHtml(cl.name||'') + taxBadge;
   ge('q-cl-base').innerHTML=`統編：${cl.tax}${cl.tel?' ／ '+cl.tel:''}<br>${fmtAddr(cl.zip, cl.city, cl.addr)}`;
-  // 除錯用：印到 console
-  console.log('[renderClientCard]', {name:cl.name, id:cl.id, taxType:cl.taxType});
   const pills=ge('q-contact-pills');
   pills.innerHTML=(cl.contacts||[]).length
     ?cl.contacts.map((p,i)=>`<span class="cpill${selectedContactIdx===i?' active':''}" onclick="toggleContact(${i})" title="${p.dept||''}${p.title?' '+p.title:''}${p.ext?' 分機：'+p.ext:''}">${p.name}${p.dept?' · '+p.dept:''}</span>`).join('')
@@ -2286,7 +2282,7 @@ function getDefaultFilename(ext){
 }
 
 // ===== BOOT =====
-console.log('%c[報價單系統] BUILD: 2026-05-06-r6 native-print','background:#185FA5;color:#fff;padding:4px 8px;border-radius:3px;font-weight:bold');
+console.log('%c[報價單系統] BUILD: 2026-05-06-r8 cleanup','background:#185FA5;color:#fff;padding:4px 8px;border-radius:3px;font-weight:bold');
 initApp();
 
 // 手機版：顯示下載按鈕，隱藏列印按鈕
@@ -2329,13 +2325,7 @@ async function rasterizeAllImages(paper){
         cv.getContext('2d').drawImage(tmp, 0, 0, w, h);
         const png = cv.toDataURL('image/png');
         if(png !== 'data:,') img.src = png;
-        console.log('[rasterizeAllImages] OK', {
-          isSvg,
-          srcType: img.src.startsWith('data:image/svg') ? 'SVG' : (img.src.startsWith('data:image/png') ? 'PNG' : 'OTHER'),
-          naturalSize: tmp.naturalWidth + 'x' + tmp.naturalHeight,
-          canvasSize: w + 'x' + h,
-        });
-      } catch(e){ console.warn('[rasterizeAllImages] 失敗:', e); }
+      } catch(e){ console.warn('Logo raster 失敗:', e); }
       resolve();
     };
     tmp.onerror = () => resolve();
