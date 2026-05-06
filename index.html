@@ -711,6 +711,71 @@ function dedupContacts(arr, keyFields){
 }
 
 // ===== 一次性清理重複資料 =====
+// 除錯用全域函式：在瀏覽器 console 輸入 `diagClient('基隆')` 可查所有名稱含「基隆」的客戶儲存值
+window.diagClient = function(searchName){
+  const matches = clients.filter(c => (c.name||'').includes(searchName));
+  console.log(`找到 ${matches.length} 筆符合「${searchName}」的客戶：`);
+  matches.forEach(c => {
+    console.log({
+      name: c.name,
+      id: c.id,
+      taxType: c.taxType,
+      taxTypeJSON: JSON.stringify(c.taxType),
+      taxTypeIsIncluded: c.taxType === 'included',
+    });
+  });
+  return matches;
+};
+
+// 報價單編號格式遷移：舊 {code}-{ymd}-{seq} → 新 {ymd}-{code}-{seq}
+// 在 console 執行 `runMigration()` 一次即可
+window.runMigration = async function(){
+  if(!confirm('將把所有舊格式的報價單編號（{code}-{ymd}-{seq}）改成新格式（{ymd}-{code}-{seq}）。\n\n此動作會同步更新本機與雲端資料。\n\n確定執行嗎？')) return;
+  showToast('遷移中… 請稍候，不要關閉頁面',8000);
+
+  // Step 1: 本機 localStorage 遷移
+  const oldFormat = /^(.+)-(\d{8})-(\d+)$/;
+  const localQuotes = lsGet(SK.quotes) || [];
+  let localMigrated = 0;
+  const sample = [];
+  localQuotes.forEach(q => {
+    const oldNum = String(q.num || q.id || '');
+    const m = oldNum.match(oldFormat);
+    if(!m) return;
+    const newNum = m[2] + '-' + m[1] + '-' + m[3];
+    if(newNum === oldNum) return;
+    if(sample.length < 3) sample.push(oldNum + ' → ' + newNum);
+    q.num = newNum;
+    q.id = newNum;
+    localMigrated++;
+  });
+  lsSet(SK.quotes, localQuotes);
+  console.log('本機遷移範例：', sample);
+
+  // Step 2: 呼叫 GAS 端的批次遷移
+  let cloudMigrated = 0;
+  let cloudError = null;
+  try{
+    const r = await apiPost({action:'migrateQuoteNumbers'});
+    if(r && r.status === 'ok'){
+      cloudMigrated = r.migrated || 0;
+      console.log('雲端遷移結果：', r);
+    }else{
+      cloudError = (r && r.message) || '雲端回傳格式異常';
+    }
+  }catch(e){
+    cloudError = e.message || String(e);
+  }
+
+  // 結果回報
+  if(cloudError){
+    showToast('⚠️ 本機已遷移 ' + localMigrated + ' 筆，雲端失敗：' + cloudError, 9000);
+    console.error('雲端遷移失敗：', cloudError);
+    return;
+  }
+  showToast('✅ 完成：本機 ' + localMigrated + ' 筆、雲端 ' + cloudMigrated + ' 筆已更新。3 秒後自動重新整理…', 4000);
+  setTimeout(()=>location.reload(), 3000);
+};
 function cleanDuplicates(){
   try{
     // 清理 clients（含每位客戶內部的承辦人）
@@ -1071,7 +1136,7 @@ function genQuoteNum(){
   const code=selectedCompany.code||selectedCompany.name.slice(0,3).toUpperCase();
   const today=new Date();
   const ymd=today.getFullYear().toString()+String(today.getMonth()+1).padStart(2,'0')+String(today.getDate()).padStart(2,'0');
-  const prefix=code+'-'+ymd+'-';
+  const prefix=ymd+'-'+code+'-';
   const savedQuotes=lsGet(SK.quotes)||[];
   const todayNums=savedQuotes.map(q=>q.num||q.id||'').filter(n=>n.startsWith(prefix)).map(n=>parseInt(n.replace(prefix,''),10)).filter(n=>!isNaN(n));
   const maxSeq=todayNums.length?Math.max(...todayNums):0;
@@ -1123,11 +1188,15 @@ function pickClient(id){
 function renderClientCard(){
   const cl=selectedClient;
   // 稅金模式徽章（橘=外加稅、綠=含稅公家）：直接讓使用者一眼看清楚目前抓到的是哪種設定
-  const taxBadge = cl.taxType==='included'
+  // 橘色徽章會把原始 taxType 值顯示出來方便除錯
+  const t = cl.taxType;
+  const taxBadge = t==='included'
     ? '<span style="display:inline-block;font-size:10px;background:#28a745;color:#fff;padding:2px 6px;border-radius:3px;margin-left:8px;font-weight:500;vertical-align:middle">含稅（公家）</span>'
-    : '<span style="display:inline-block;font-size:10px;background:#fd7e14;color:#fff;padding:2px 6px;border-radius:3px;margin-left:8px;font-weight:500;vertical-align:middle">外加稅</span>';
+    : `<span style="display:inline-block;font-size:10px;background:#fd7e14;color:#fff;padding:2px 6px;border-radius:3px;margin-left:8px;font-weight:500;vertical-align:middle" title="點擊客戶管理確認設定">外加稅 [taxType=${JSON.stringify(t)}]</span>`;
   ge('q-cl-name-badge').innerHTML = escHtml(cl.name||'') + taxBadge;
   ge('q-cl-base').innerHTML=`統編：${cl.tax}${cl.tel?' ／ '+cl.tel:''}<br>${fmtAddr(cl.zip, cl.city, cl.addr)}`;
+  // 除錯用：印到 console
+  console.log('[renderClientCard]', {name:cl.name, id:cl.id, taxType:cl.taxType});
   const pills=ge('q-contact-pills');
   pills.innerHTML=(cl.contacts||[]).length
     ?cl.contacts.map((p,i)=>`<span class="cpill${selectedContactIdx===i?' active':''}" onclick="toggleContact(${i})" title="${p.dept||''}${p.title?' '+p.title:''}${p.ext?' 分機：'+p.ext:''}">${p.name}${p.dept?' · '+p.dept:''}</span>`).join('')
@@ -1976,7 +2045,7 @@ function copySelectedQuote(){
   const code=co?.code||co?.name?.slice(0,3).toUpperCase()||'CPY';
   const now=new Date();
   const ymd=now.getFullYear().toString()+String(now.getMonth()+1).padStart(2,'0')+String(now.getDate()).padStart(2,'0');
-  const prefix=code+'-'+ymd+'-';
+  const prefix=ymd+'-'+code+'-';
   const todayNums=savedQuotes.map(q=>q.num||q.id||'').filter(n=>n.startsWith(prefix)).map(n=>parseInt(n.replace(prefix,''),10)).filter(n=>!isNaN(n));
   const maxSeq=todayNums.length?Math.max(...todayNums):0;
   const newNum=prefix+String(maxSeq+1).padStart(3,'0');
