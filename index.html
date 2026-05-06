@@ -118,13 +118,15 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#f5f5f5;min-heigh
 .qp-title{font-size:1.25em;font-weight:500;color:var(--blue);letter-spacing:.2em;text-align:center;position:absolute;left:0;right:0;pointer-events:none;top:50%;transform:translateY(-50%)}
 .qp-num{font-size:0.91em;color:#333;margin-top:0.2em}
 .divider{height:0.5px;background:#bbb;margin:0.7em 0}
-.qp-names-row{display:grid;grid-template-columns:60fr 40fr;gap:0.6em;margin-bottom:0.5em;align-items:first baseline}
+.qp-names-row{display:flex;flex-wrap:nowrap;gap:0;margin-bottom:0.5em;align-items:first baseline}
+.qp-names-row>:first-child{flex:0 0 70%;min-width:0}
+.qp-names-row>:last-child{flex:0 0 35%;min-width:0;margin-left:-5%}
 .qp-name-cell{min-width:0;word-break:break-word}
 .qp-name-right{text-align:right}
 .qp-label{font-size:0.76em;text-transform:uppercase;letter-spacing:.08em;color:#444;margin-bottom:0.3em}
 .qp-detail-cell{font-size:0.84em;color:#444;line-height:1.6;min-width:0;word-break:normal;overflow-wrap:normal}
 .qp-detail-right{text-align:right}
-.qp-info{display:grid;grid-template-columns:60fr 40fr;gap:0.6em;margin-bottom:0.7em}
+.qp-info{display:grid;grid-template-columns:1fr 1fr;gap:0.6em;margin-bottom:0.7em}
 .qp-block h4{font-size:0.76em;text-transform:uppercase;letter-spacing:.08em;color:#444;margin-bottom:0.4em}
 .qp-block p{font-size:0.84em;color:#444;line-height:1.5;margin-top:0}
 /* qp-detail-cell 獨立控制，不繼承 qp-block p */
@@ -1321,6 +1323,16 @@ function renderPreviewTo(ids, co, cl, salesIdx, contactIdx, qtItems, disc, taxRa
 
 // 報價單編輯頁的預覽（讀取 DOM 表單值）
 function renderPreview(){
+  // 用 ID 從最新 clients/companies 陣列重抓，避免 selectedClient/selectedCompany 還指向舊物件
+  // （例如在客戶管理改了稅金設定後，selectedClient 仍是舊物件 → 預覽用舊 taxType）
+  if(selectedCompany){
+    const fresh = companies.find(c => String(c.id) === String(selectedCompany.id));
+    if(fresh) selectedCompany = fresh;
+  }
+  if(selectedClient){
+    const fresh = clients.find(c => String(c.id) === String(selectedClient.id));
+    if(fresh) selectedClient = fresh;
+  }
   const co = selectedCompany;
   const cl = selectedClient;
   const brandColor = co?.brandColor || '#185FA5';
@@ -1533,6 +1545,8 @@ function saveClientForm(id){
     data.id=String(id);
     if(i>=0) clients[i]=data; else clients.push(data);
   }
+  // 如果報價單編輯頁正在用這位客戶，同步更新 selectedClient 指向新物件，避免後續 render 用舊資料
+  if(selectedClient && String(selectedClient.id)===String(data.id)) selectedClient=data;
   editingClientId=String(data.id);
   // 同步更新 window.clContacts，避免二次渲染時重複
   window.clOffices=(offices||[]).map(o=>({...o}));
@@ -1773,6 +1787,8 @@ function saveCoForm(id,isNew='false'){
     contacts:dedupContacts((window.coContacts||[]).filter(p=>p.name.trim()), ['name','title','phone']),bankName:ge('cof-bank')?.value.trim(),bankAcct:ge('cof-acct')?.value.trim()};
   if(isNew==='true'||isNew===true){data.id=String(Date.now());data.logo='';companies.push(data);}
   else{const i=companies.findIndex(c=>String(c.id)===String(id));if(i<0){alert('找不到公司資料');return;}data.id=String(id);data.logo=companies[i].logo||'';companies[i]=data;}
+  // 如果報價單編輯頁正在用這家公司，同步更新 selectedCompany 指向新物件
+  if(selectedCompany && String(selectedCompany.id)===String(data.id)) selectedCompany=data;
   editingCoId=String(data.id);
   // 同步更新 window.coContacts，避免重渲染時重複
   window.coContacts=(data.contacts||[]).map(p=>({...p}));
