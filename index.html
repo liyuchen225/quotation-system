@@ -727,6 +727,36 @@ window.diagClient = function(searchName){
   return matches;
 };
 
+// 把所有現有公司中還是 SVG 格式的 logo，重新轉成 PNG 後存回去
+// 用法：在 console 執行 `convertSvgLogos()`
+window.convertSvgLogos = async function(){
+  const svgCompanies = companies.filter(c => c.logo && c.logo.startsWith('data:image/svg+xml'));
+  if(svgCompanies.length===0){ console.log('沒有 SVG 格式的 logo'); return; }
+  console.log(`找到 ${svgCompanies.length} 家公司使用 SVG logo：`, svgCompanies.map(c=>c.name));
+  if(!confirm(`找到 ${svgCompanies.length} 家公司使用 SVG logo，要全部轉成 PNG 嗎？`)) return;
+
+  let ok=0, fail=0;
+  for(const co of svgCompanies){
+    try{
+      const svgText = decodeURIComponent(escape(atob(co.logo.split(',')[1])));
+      const pngDataUrl = await convertSvgToPng(svgText);
+      const i = companies.findIndex(c => String(c.id)===String(co.id));
+      if(i>=0){
+        companies[i].logo = pngDataUrl;
+        lsSet(SK.companies, companies);
+        await saveCompanies(companies[i]);
+        ok++;
+        console.log(`✓ ${co.name} 已轉 PNG`);
+      }
+    }catch(e){
+      fail++;
+      console.error(`✗ ${co.name} 轉換失敗:`, e);
+    }
+  }
+  showToast(`完成：成功 ${ok} 家、失敗 ${fail} 家`, 5000);
+  console.log('全部完成。重新整理頁面以載入新 logo。');
+};
+
 // 報價單編號格式遷移：舊 {code}-{ymd}-{seq} → 新 {ymd}-{code}-{seq}
 // 在 console 執行 `runMigration()` 一次即可
 window.runMigration = async function(){
@@ -1819,14 +1849,79 @@ function handleLogoUpload(input,coId){
   const file=input.files[0];if(!file)return;
   const isSvg=file.type==='image/svg+xml'||file.name.toLowerCase().endsWith('.svg');
   if(isSvg){
+    // 上傳時直接把 SVG 轉成 PNG 存起來，避免列印/下載時 SVG 在 canvas 環境下因缺失外部資源（字型、圖片）導致只剩破碎元素
     const reader=new FileReader();
-    reader.onload=async function(e){const b64=btoa(unescape(encodeURIComponent(e.target.result)));await _applyLogo(`data:image/svg+xml;base64,${b64}`,coId);};
+    reader.onload=async function(e){
+      const svgText=e.target.result;
+      try{
+        const pngDataUrl=await convertSvgToPng(svgText);
+        await _applyLogo(pngDataUrl,coId);
+        showToast('Logo 已上傳（SVG 已自動轉為 PNG）✓');
+      }catch(err){
+        console.error('[handleLogoUpload] SVG→PNG 轉換失敗，改用原始 SVG 儲存',err);
+        // 保底：失敗時仍存原始 SVG，列印時的 rasterize 可能還救得回來
+        const b64=btoa(unescape(encodeURIComponent(svgText)));
+        await _applyLogo(`data:image/svg+xml;base64,${b64}`,coId);
+        showToast('⚠️ SVG 轉 PNG 失敗，已存原始 SVG（列印可能異常，建議改用 PNG 圖檔）');
+      }
+    };
     reader.readAsText(file,'utf-8');
   }else{
     const reader=new FileReader();
     reader.onload=async function(e){await _applyLogo(e.target.result,coId);};
     reader.readAsDataURL(file);
   }
+}
+
+// ===== SVG 轉 PNG（上傳時或重整現有資料時用）=====
+// 解析 SVG → 從 width/height 或 viewBox 算出尺寸 → 放大到 800px 寬高 → 畫到 canvas → 輸出 PNG
+async function convertSvgToPng(svgText){
+  const parser=new DOMParser();
+  const doc=parser.parseFromString(svgText,'image/svg+xml');
+  const svg=doc.documentElement;
+  if(!svg||svg.tagName.toLowerCase()!=='svg') throw new Error('不是有效的 SVG');
+
+  // 取出原始尺寸
+  let w=parseFloat(svg.getAttribute('width'))||0;
+  let h=parseFloat(svg.getAttribute('height'))||0;
+  if(!w||!h){
+    const vb=svg.getAttribute('viewBox');
+    if(vb){
+      const parts=vb.trim().split(/[\s,]+/).map(Number);
+      if(parts.length===4){ w=w||parts[2]; h=h||parts[3]; }
+    }
+  }
+  if(!w||!h){ w=400; h=160; } // 最後保底
+
+  // 放大到 800px 寬左右，列印才不會糊
+  const targetW=800;
+  const scale=targetW/w;
+  const finalW=Math.round(w*scale);
+  const finalH=Math.round(h*scale);
+
+  // 確保 SVG 有明確尺寸 + xmlns（不然 Image() 會拒收）
+  svg.setAttribute('width',finalW);
+  svg.setAttribute('height',finalH);
+  if(!svg.getAttribute('xmlns')) svg.setAttribute('xmlns','http://www.w3.org/2000/svg');
+
+  const serialized=new XMLSerializer().serializeToString(svg);
+  const svgDataUrl='data:image/svg+xml;base64,'+btoa(unescape(encodeURIComponent(serialized)));
+
+  // 載入 SVG → 畫到 canvas → 輸出 PNG
+  const tmp=await new Promise((res,rej)=>{
+    const t=new Image();
+    t.onload=()=>res(t);
+    t.onerror=()=>rej(new Error('SVG image load failed'));
+    t.src=svgDataUrl;
+  });
+  const canvas=document.createElement('canvas');
+  canvas.width=finalW; canvas.height=finalH;
+  // 透明背景 → fill 白色（避免 PNG 透明部分在某些環境下變成黑色）
+  const ctx=canvas.getContext('2d');
+  ctx.drawImage(tmp,0,0,finalW,finalH);
+  const png=canvas.toDataURL('image/png');
+  if(!png||png==='data:,') throw new Error('canvas 輸出空 PNG');
+  return png;
 }
 async function _applyLogo(dataUrl,coId){
   const preview=ge('cof-logo-preview'),wrap=ge('cof-logo-preview-wrap'),errEl=ge('cof-logo-error');
@@ -2184,95 +2279,31 @@ if(window.innerWidth <= 768){
 }
 
 // ===== 下載/列印共用：把 paper 裡的 <img> 全部 raster 成 PNG =====
-// 三種來源：
-//   1. SVG（data:image/svg+xml 或 .svg）→ 預處理注入明確 width/height、再 raster
-//   2. 其他 data:（PNG/JPG base64）→ 略過（已是 raster）
-//   3. http(s) 連結 → CORS anonymous 載入後 raster
+// 邏輯保持簡單：所有圖片（含 SVG data URL）一律 Image → canvas → PNG
+// crossOrigin 只在 http(s) 外部連結時才設，data URL（SVG/PNG/JPG base64）一律不設，避免干擾載入
 async function rasterizeAllImages(paper){
   const imgs = Array.from(paper.querySelectorAll('img'));
   const origSrcs = imgs.map(img => img.src);
-  await Promise.all(imgs.map(async img => {
-    if(!img.src) return;
-    let src = img.src;
-    const isSvg = src.startsWith('data:image/svg+xml') || /\.svg(\?|#|$)/i.test(src);
-    // 非 SVG 的 data URL（已經是 raster）→ 略過
-    if(src.startsWith('data:') && !isSvg) return;
-
-    // SVG 預處理：解出原始 SVG 文字、塞入明確 width/height（避免 SVG 沒尺寸時瀏覽器用預設 300×150）
-    let targetW = 0, targetH = 0;
-    if(isSvg){
-      try{
-        const rect = img.getBoundingClientRect();
-        targetW = Math.max(1, Math.round(rect.width || 200));
-        targetH = Math.max(1, Math.round(rect.height || 80));
-
-        let svgText = '';
-        if(src.startsWith('data:image/svg+xml;base64,')){
-          svgText = decodeURIComponent(escape(atob(src.split(',')[1])));
-        }else if(src.startsWith('data:image/svg+xml,')){
-          svgText = decodeURIComponent(src.split(',')[1]);
-        }else{
-          // .svg 外部連結
-          const r = await fetch(src);
-          svgText = await r.text();
-        }
-
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(svgText, 'image/svg+xml');
-        const svgEl = doc.documentElement;
-        if(svgEl && svgEl.tagName.toLowerCase() === 'svg'){
-          svgEl.setAttribute('width', targetW);
-          svgEl.setAttribute('height', targetH);
-          // 確保有 xmlns，否則 Image() 會拒絕載入
-          if(!svgEl.getAttribute('xmlns')) svgEl.setAttribute('xmlns','http://www.w3.org/2000/svg');
-          const serialized = new XMLSerializer().serializeToString(svgEl);
-          src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(serialized)));
-        }
-      }catch(e){
-        console.warn('[rasterizeAllImages] SVG 預處理失敗，用原始 src 繼續', e);
-      }
-    }
-
-    // 載入並 raster
-    try{
-      const tmp = await new Promise((res, rej) => {
-        const t = new Image();
-        // SVG data URL 是 same-origin 不需要 CORS
-        if(!isSvg) t.crossOrigin = 'anonymous';
-        t.onload = () => res(t);
-        t.onerror = (err) => rej(err || new Error('image load failed'));
-        t.src = src;
-      });
-
-      let w, h;
-      if(isSvg){
-        const scale = 4;
-        w = Math.max(1, Math.round(targetW * scale));
-        h = Math.max(1, Math.round(targetH * scale));
-      }else{
-        w = tmp.naturalWidth || 300;
-        h = tmp.naturalHeight || 120;
-      }
-      const cv = document.createElement('canvas');
-      cv.width = w; cv.height = h;
-      cv.getContext('2d').drawImage(tmp, 0, 0, w, h);
-      const png = cv.toDataURL('image/png');
-
-      // 替換 img.src 並等待新圖載入（不等的話 html2canvas 抓到的可能還是舊的）
-      if(png && png !== 'data:,'){
-        await new Promise(res => {
-          const done = () => { img.onload = null; img.onerror = null; res(); };
-          img.onload = done; img.onerror = done;
-          img.src = png;
-          // 保險：100ms 後若還沒觸發也放行
-          setTimeout(done, 200);
-        });
-      }
-      console.log('[rasterizeAllImages] OK', {isSvg, canvasW:w, canvasH:h});
-    }catch(e){
-      console.warn('[rasterizeAllImages] raster 失敗', e, {isSvg, srcStart: String(src).slice(0,60)});
-    }
-  }));
+  await Promise.all(imgs.map(img => new Promise(resolve => {
+    if(!img.src){ resolve(); return; }
+    const tmp = new Image();
+    // 只對外部 http(s) 連結設 CORS（例如還沒被 handleLogoUrl 轉成 base64 的 Drive URL）
+    // SVG/PNG/JPG 的 data URL 不需要設，設了反而會在某些瀏覽器干擾載入
+    if(!img.src.startsWith('data:')) tmp.crossOrigin = 'anonymous';
+    tmp.onload = () => {
+      try {
+        const cv = document.createElement('canvas');
+        cv.width = tmp.naturalWidth||300;
+        cv.height = tmp.naturalHeight||120;
+        cv.getContext('2d').drawImage(tmp, 0, 0, cv.width, cv.height);
+        const png = cv.toDataURL('image/png');
+        if(png !== 'data:,') img.src = png;
+      } catch(e){ console.warn('Logo raster 失敗:', e); }
+      resolve();
+    };
+    tmp.onerror = () => resolve();
+    tmp.src = img.src;
+  })));
   return { imgs, origSrcs };
 }
 
