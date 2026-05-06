@@ -2268,7 +2268,7 @@ function getDefaultFilename(ext){
 }
 
 // ===== BOOT =====
-console.log('%c[報價單系統] BUILD: 2026-05-06-r4 SVG-revert','background:#185FA5;color:#fff;padding:4px 8px;border-radius:3px;font-weight:bold');
+console.log('%c[報價單系統] BUILD: 2026-05-06-r5 SVG-size-fix','background:#185FA5;color:#fff;padding:4px 8px;border-radius:3px;font-weight:bold');
 initApp();
 
 // 手機版：顯示下載按鈕，隱藏列印按鈕
@@ -2280,23 +2280,35 @@ if(window.innerWidth <= 768){
 }
 
 // ===== 下載/列印共用：把 paper 裡的 <img> 全部 raster 成 PNG =====
-// 邏輯保持簡單：所有圖片（含 SVG data URL）一律 Image → canvas → PNG
-// crossOrigin 只在 http(s) 外部連結時才設，data URL（SVG/PNG/JPG base64）一律不設，避免干擾載入
+// 一般 PNG/JPG：用自然尺寸（跟原始邏輯一樣）
+// SVG：用畫面實際顯示尺寸 × 4 倍解析度（避免 SVG 自然尺寸過大導致 html2canvas 處理時溢出）
+// crossOrigin 只在 http(s) 外部連結時才設，data URL 一律不設
 async function rasterizeAllImages(paper){
   const imgs = Array.from(paper.querySelectorAll('img'));
   const origSrcs = imgs.map(img => img.src);
   await Promise.all(imgs.map(img => new Promise(resolve => {
     if(!img.src){ resolve(); return; }
     const tmp = new Image();
-    // 只對外部 http(s) 連結設 CORS（例如還沒被 handleLogoUrl 轉成 base64 的 Drive URL）
-    // SVG/PNG/JPG 的 data URL 不需要設，設了反而會在某些瀏覽器干擾載入
     if(!img.src.startsWith('data:')) tmp.crossOrigin = 'anonymous';
+    const isSvg = img.src.startsWith('data:image/svg+xml') || /\.svg(\?|#|$)/i.test(img.src);
     tmp.onload = () => {
       try {
+        let w, h;
+        if(isSvg){
+          // SVG 用 DOM 顯示尺寸 ×4：避免 SVG naturalWidth 可能高達 2400+ 導致 PNG 過大、html2canvas 處理時尺寸溢出
+          const rect = img.getBoundingClientRect();
+          const dispW = Math.round(rect.width) || tmp.naturalWidth || 200;
+          const dispH = Math.round(rect.height) || tmp.naturalHeight || 60;
+          w = Math.max(1, dispW * 4);
+          h = Math.max(1, dispH * 4);
+        } else {
+          // 一般 raster 圖：用自然尺寸（跟原始邏輯一致）
+          w = tmp.naturalWidth||300;
+          h = tmp.naturalHeight||120;
+        }
         const cv = document.createElement('canvas');
-        cv.width = tmp.naturalWidth||300;
-        cv.height = tmp.naturalHeight||120;
-        cv.getContext('2d').drawImage(tmp, 0, 0, cv.width, cv.height);
+        cv.width = w; cv.height = h;
+        cv.getContext('2d').drawImage(tmp, 0, 0, w, h);
         const png = cv.toDataURL('image/png');
         if(png !== 'data:,') img.src = png;
       } catch(e){ console.warn('Logo raster 失敗:', e); }
