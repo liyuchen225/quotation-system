@@ -2183,6 +2183,53 @@ if(window.innerWidth <= 768){
   if(btnDown)  btnDown.style.display  = '';
 }
 
+// ===== 下載/列印共用：把 paper 裡的 <img> 全部 raster 成 PNG =====
+// 處理三種來源：
+//   1. SVG（data:image/svg+xml 或 .svg）→ 用 DOM 實際尺寸 ×4 解析度 raster
+//   2. 其他已經是 data: 的圖（PNG/JPG base64）→ 略過（已是 raster）
+//   3. http(s) 連結 → 透過 anonymous CORS 載入後 raster 為 PNG
+async function rasterizeAllImages(paper){
+  const imgs = Array.from(paper.querySelectorAll('img'));
+  const origSrcs = imgs.map(img => img.src);
+  await Promise.all(imgs.map(img => new Promise(resolve => {
+    if(!img.src){ resolve(); return; }
+    const src = img.src;
+    const isSvg = src.startsWith('data:image/svg+xml') || /\.svg(\?|#|$)/i.test(src);
+    // 非 SVG 的 data URL（已經是 raster 格式）→ 直接保留
+    if(src.startsWith('data:') && !isSvg){ resolve(); return; }
+
+    const tmp = new Image();
+    tmp.crossOrigin = 'anonymous';
+    tmp.onload = () => {
+      try {
+        let w, h;
+        if(isSvg){
+          // SVG raster：取 DOM 實際渲染尺寸（避免無 width/height 屬性的 SVG 用瀏覽器預設 300×150）
+          // 再放大 4 倍解析度，列印/下載才不會糊
+          const rect = img.getBoundingClientRect();
+          const renderedW = rect.width || tmp.naturalWidth || 200;
+          const renderedH = rect.height || tmp.naturalHeight || 80;
+          const scale = 4;
+          w = Math.max(1, Math.round(renderedW * scale));
+          h = Math.max(1, Math.round(renderedH * scale));
+        } else {
+          w = tmp.naturalWidth || 300;
+          h = tmp.naturalHeight || 120;
+        }
+        const cv = document.createElement('canvas');
+        cv.width = w; cv.height = h;
+        cv.getContext('2d').drawImage(tmp, 0, 0, w, h);
+        const png = cv.toDataURL('image/png');
+        if(png !== 'data:,') img.src = png;
+      } catch(e){ console.warn('Logo raster 失敗:', e); }
+      resolve();
+    };
+    tmp.onerror = () => resolve();
+    tmp.src = src;
+  })));
+  return { imgs, origSrcs };
+}
+
 // ===== 下載圖片（手機版）=====
 async function downloadImage(){
   const paper = document.querySelector('#tab-quote .quote-paper');
@@ -2191,29 +2238,8 @@ async function downloadImage(){
 
   showToast('準備下載中…', 10000);
 
-  // Step 1: img 轉 PNG base64
-  const imgs = Array.from(paper.querySelectorAll('img'));
-  const origSrcs = imgs.map(img => img.src);
-  await Promise.all(imgs.map(img => new Promise(resolve => {
-    if(!img.src){ resolve(); return; }
-    // 已經是 base64 就跳過轉換
-    if(img.src.startsWith('data:')){ resolve(); return; }
-    const tmp = new Image();
-    tmp.crossOrigin = 'anonymous';   // 要求 CORS，避免 canvas 被汙染
-    tmp.onload = () => {
-      try {
-        const cv = document.createElement('canvas');
-        cv.width = tmp.naturalWidth||300;
-        cv.height = tmp.naturalHeight||120;
-        cv.getContext('2d').drawImage(tmp, 0, 0, cv.width, cv.height);
-        const png = cv.toDataURL('image/png');
-        if(png !== 'data:,') img.src = png;
-      } catch(e){}
-      resolve();
-    };
-    tmp.onerror = () => resolve();
-    tmp.src = img.src;
-  })));
+  // Step 1: img 轉 PNG base64（共用 helper，能正確處理 SVG）
+  const { imgs, origSrcs } = await rasterizeAllImages(paper);
 
   // Step 2: clone paper，在 clone 上套桌機版樣式
   const clone = paper.cloneNode(true);
@@ -2309,27 +2335,8 @@ async function printQuote(){
 
   showToast('準備列印中…', 10000);
 
-  // img 轉 PNG base64
-  const imgs = Array.from(paper.querySelectorAll('img'));
-  const origSrcs = imgs.map(img => img.src);
-  await Promise.all(imgs.map(img => new Promise(resolve => {
-    if(!img.src){ resolve(); return; }
-    if(img.src.startsWith('data:')){ resolve(); return; }
-    const tmp = new Image();
-    tmp.crossOrigin = 'anonymous';
-    tmp.onload = () => {
-      try {
-        const cv = document.createElement('canvas');
-        cv.width = tmp.naturalWidth||300; cv.height = tmp.naturalHeight||120;
-        cv.getContext('2d').drawImage(tmp, 0, 0, cv.width, cv.height);
-        const png = cv.toDataURL('image/png');
-        if(png !== 'data:,') img.src = png;
-      } catch(e){}
-      resolve();
-    };
-    tmp.onerror = () => resolve();
-    tmp.src = img.src;
-  })));
+  // img 轉 PNG base64（共用 helper，能正確處理 SVG）
+  const { imgs, origSrcs } = await rasterizeAllImages(paper);
 
   // 注入桌機版 style
   const origStyle = paper.getAttribute('style') || '';
