@@ -695,22 +695,41 @@ function markUnsaved(){
   clearTimeout(saveTimer);saveTimer=setTimeout(()=>saveQuote(false),2500);
 }
 
+// ===== 承辦人/業務人員去重共用 helper =====
+// 客戶承辦人預設用 name+dept+ext 為複合鍵；公司業務人員可改傳 ['name','title','phone']
+function dedupContacts(arr, keyFields){
+  if(!arr || !arr.length) return [];
+  const fields = keyFields || ['name','dept','ext'];
+  const map = new Map();
+  arr.forEach(p => {
+    const key = fields.map(f => String(p[f]||'').trim()).join('|');
+    if(!map.has(key)) map.set(key, p);
+  });
+  return Array.from(map.values());
+}
+
 // ===== 一次性清理重複資料 =====
 function cleanDuplicates(){
   try{
-    // 清理 clients
+    // 清理 clients（含每位客戶內部的承辦人）
     const cls=lsGet(SK.clients)||[];
     if(cls.length){
-      const map=new Map();cls.forEach(c=>{map.set(String(c.id),c);});
-      const clean=Array.from(map.values());
-      if(clean.length<cls.length){lsSet(SK.clients,clean);console.log('已清理重複客戶：'+cls.length+'→'+clean.length);}
+      const map=new Map();
+      cls.forEach(c=>{
+        if(Array.isArray(c.contacts)) c.contacts = dedupContacts(c.contacts);
+        map.set(String(c.id),c);
+      });
+      lsSet(SK.clients,Array.from(map.values()));
     }
-    // 清理 companies
+    // 清理 companies（含每家公司內部的業務人員）
     const cos=lsGet(SK.companies)||[];
     if(cos.length){
-      const map=new Map();cos.forEach(c=>{map.set(String(c.id),c);});
-      const clean=Array.from(map.values());
-      if(clean.length<cos.length){lsSet(SK.companies,clean);console.log('已清理重複公司：'+cos.length+'→'+clean.length);}
+      const map=new Map();
+      cos.forEach(c=>{
+        if(Array.isArray(c.contacts)) c.contacts = dedupContacts(c.contacts, ['name','title','phone']);
+        map.set(String(c.id),c);
+      });
+      lsSet(SK.companies,Array.from(map.values()));
     }
     // 清理 quotes
     const qs=lsGet(SK.quotes)||[];
@@ -843,13 +862,13 @@ async function initApp(){
             zip:co.zip||cached?.zip||'',city:co.city||cached?.city||'',addr:co.addr||cached?.addr||'',tel:co.tel||cached?.tel||'',
             email:co.email||cached?.email||'',bankName:co.bankName||cached?.bankName||'',
             bankAcct:co.bankAcct||cached?.bankAcct||'',brandColor:co.brandColor||cached?.brandColor||'#185FA5',
-            contacts:(co.contacts||[]).map(p=>({...p,id:String(p.id||'')}))};
+            contacts:dedupContacts((co.contacts||[]).map(p=>({...p,id:String(p.id||'')})), ['name','title','phone'])};
         });
         companies=dedupeById(mapped);
       }else if(cachedCos.length){companies=dedupeById(cachedCos);}
       if(result.clients?.length){
         const mapped=result.clients.map(cl=>({...cl,id:String(cl.id),name:cl.name||'',tax:cl.tax||'',tel:cl.tel||'',taxType:cl.taxType||'extra',zip:cl.zip||'',city:cl.city||'',addr:cl.addr||'',
-          fax:cl.fax||'',offices:(cl.offices||[]),contacts:(cl.contacts||[]).map(p=>({...p,id:String(p.id||''),name:p.name||'',dept:p.dept||'',title:p.title||'',ext:p.ext||'',email:p.email||'',mobile:p.mobile||'',note:p.note||'',officeIdx:p.officeIdx??null}))}));
+          fax:cl.fax||'',offices:(cl.offices||[]),contacts:dedupContacts((cl.contacts||[]).map(p=>({...p,id:String(p.id||''),name:p.name||'',dept:p.dept||'',title:p.title||'',ext:p.ext||'',email:p.email||'',mobile:p.mobile||'',note:p.note||'',officeIdx:p.officeIdx??null})))}));
         clients=dedupeById(mapped);
       }else if(cachedCls.length){clients=dedupeById(cachedCls);}
       // 儲存前確保無重複
@@ -1074,7 +1093,7 @@ function renderSalesPills(){
   if(!selectedCompany||!selectedCompany.contacts?.length){wrap.style.display='none';return;}
   wrap.style.display='block';
   pills.innerHTML=selectedCompany.contacts.map((p,i)=>
-    `<span class="cpill${selectedSalesIdx===i?' active':''}" onclick="toggleSales(${i})" title="${p.title||''}${p.phone?' ／ '+p.phone:''}">${p.name}${p.title?' · '+p.title:''}</span>`
+    `<span class="cpill${selectedSalesIdx===i?' active':''}" onclick="toggleSales(${i})" title="${p.title||''}">${p.name}${p.title?' · '+p.title:''}</span>`
   ).join('');
 }
 function toggleSales(i){selectedSalesIdx=selectedSalesIdx===i?null:i;renderSalesPills();markUnsaved();renderPreview();}
@@ -1211,7 +1230,7 @@ function renderPreviewTo(ids, co, cl, salesIdx, contactIdx, qtItems, disc, taxRa
     if(co){
       const fmtCoAddr=fmtAddr(co.zip, co.city, co.addr);
       let s=`${fmtCoAddr}<br>${co.tel}${co.email?' ／ '+co.email:''}${co.tax?'<br>統編：'+co.tax:''}`;
-      if(sp)s+=`<br>業務：${sp.name}${sp.title?' ('+sp.title+')':''}${sp.phone?' ／ '+sp.phone:''}`;
+      if(sp)s+=`<br>業務：${sp.name}${sp.title?' ('+sp.title+')':''}`;
       coSubEl.innerHTML=s;
     }else{coSubEl.innerHTML='';}
   }
@@ -1564,7 +1583,8 @@ function cancelCoEdit(){
 
 function coForm(co,isNew=false){
   const v=(x)=>co?escHtml(co[x]||''):'';
-  window.coContacts=(co?.contacts||[]).map(p=>({...p}));
+  // 載入時先去重，避免雲端/本機資料已有重複（與 clientForm 邏輯一致）
+  window.coContacts=dedupContacts((co?.contacts||[]).map(p=>({...p})), ['name','title','phone']);
   const rows=()=>window.coContacts.map((p,i)=>`<tr>
     <td><input value="${escHtml(p.name||'')}" oninput="coContacts[${i}].name=this.value" placeholder="姓名"></td>
     <td><input value="${escHtml(p.title||'')}" oninput="coContacts[${i}].title=this.value" placeholder="職稱"></td>
@@ -1639,18 +1659,72 @@ function coForm(co,isNew=false){
 </div>`;
 }
 
+// 嘗試把外部圖片網址下載成 base64 data URL（避免 html2canvas 列印/下載時 CORS 失敗）
+function urlToDataUrl(url){
+  return new Promise((resolve, reject)=>{
+    const img=new Image();
+    img.crossOrigin='anonymous';   // 要求 CORS；伺服器若不支援會 onerror
+    img.onload=()=>{
+      try{
+        const cv=document.createElement('canvas');
+        cv.width=img.naturalWidth||300;
+        cv.height=img.naturalHeight||120;
+        cv.getContext('2d').drawImage(img,0,0);
+        const dataUrl=cv.toDataURL('image/png');
+        if(!dataUrl||dataUrl==='data:,') reject(new Error('empty'));
+        else resolve(dataUrl);
+      }catch(e){reject(e);}
+    };
+    img.onerror=()=>reject(new Error('image load failed (CORS or network)'));
+    img.src=url;
+  });
+}
+
 async function handleLogoUrl(coId){
   const urlInput=ge('cof-logo-url');if(!urlInput)return;
   const url=urlInput.value.trim();if(!url){alert('請輸入圖片網址');return;}
-  let finalUrl=url;
-  const driveMatch=url.match(/\/file\/d\/([^/]+)/);
-  if(driveMatch)finalUrl=`https://drive.google.com/uc?export=view&id=${driveMatch[1]}`;
+
+  // 從各種 Google Drive 網址中萃取 file ID
+  let driveId=null;
+  const m1=url.match(/\/file\/d\/([a-zA-Z0-9_-]{20,})/);
+  const m2=url.match(/[?&]id=([a-zA-Z0-9_-]{20,})/);
+  const m3=url.match(/\/d\/([a-zA-Z0-9_-]{20,})/);
+  if(m1) driveId=m1[1]; else if(m2) driveId=m2[1]; else if(m3) driveId=m3[1];
+
+  // 候選網址清單，按 CORS 成功率排序：lh3.googleusercontent.com 通常最友善
+  const candidates=[];
+  if(driveId){
+    candidates.push(`https://lh3.googleusercontent.com/d/${driveId}=w800`);
+    candidates.push(`https://drive.google.com/thumbnail?id=${driveId}&sz=w800`);
+    candidates.push(`https://drive.google.com/uc?export=view&id=${driveId}`);
+  }
+  candidates.push(url);   // 最後 fallback：使用者貼的原網址
+
+  showToast('下載並轉換圖片中…',8000);
+  let storeUrl=null;
+  let convertedToBase64=false;
+  for(const candidate of candidates){
+    try{
+      storeUrl=await urlToDataUrl(candidate);
+      convertedToBase64=true;
+      break;
+    }catch(e){ /* try next */ }
+  }
+  if(!storeUrl){
+    storeUrl=url;   // 全部都失敗，存原網址（前台預覽正常但列印/下載會缺）
+  }
+
   const i=companies.findIndex(c=>String(c.id)===String(coId));
   if(i>=0){
-    companies[i].logo=finalUrl;lsSet(SK.companies,companies);
+    companies[i].logo=storeUrl;lsSet(SK.companies,companies);
     const preview=ge('cof-logo-preview'),wrap=ge('cof-logo-preview-wrap'),errEl=ge('cof-logo-error');
-    if(preview){preview.src=finalUrl;preview.style.display='';}if(wrap)wrap.style.display='flex';if(errEl)errEl.style.display='none';
+    if(preview){preview.src=storeUrl;preview.style.display='';}if(wrap)wrap.style.display='flex';if(errEl)errEl.style.display='none';
     try{await saveCompanies(companies[i]);}catch(err){showToast('⚠️ 已存本機，雲端同步失敗');}
+    if(convertedToBase64){
+      showToast('✅ Logo 已下載並轉成 base64（列印/下載皆可正常顯示）',3500);
+    }else{
+      showToast('⚠️ 此網址無法跨域下載（試了 3 種 Drive 格式都失敗）。建議改用左上方的「點擊上傳」直接上傳圖片檔。',7000);
+    }
     renderPreview();
   }
 }
@@ -1696,7 +1770,7 @@ function saveCoForm(id,isNew='false'){
   const name=ge('cof-name')?.value.trim();if(!name){alert('請輸入公司名稱');return;}
   const data={name,code:ge('cof-code')?.value.trim(),tax:ge('cof-tax')?.value.trim()||'',brandColor:ge('cof-color')?.value||'#185FA5',invoice:ge('cof-invoice')?.value||'yes',
     zip:ge('cof-zip')?.value.trim(),city:ge('cof-city')?.value.trim()||'',addr:ge('cof-addr')?.value.trim(),tel:ge('cof-tel')?.value.trim(),email:ge('cof-email')?.value.trim(),
-    contacts:(window.coContacts||[]).filter(p=>p.name.trim()),bankName:ge('cof-bank')?.value.trim(),bankAcct:ge('cof-acct')?.value.trim()};
+    contacts:dedupContacts((window.coContacts||[]).filter(p=>p.name.trim()), ['name','title','phone']),bankName:ge('cof-bank')?.value.trim(),bankAcct:ge('cof-acct')?.value.trim()};
   if(isNew==='true'||isNew===true){data.id=String(Date.now());data.logo='';companies.push(data);}
   else{const i=companies.findIndex(c=>String(c.id)===String(id));if(i<0){alert('找不到公司資料');return;}data.id=String(id);data.logo=companies[i].logo||'';companies[i]=data;}
   editingCoId=String(data.id);
@@ -2033,7 +2107,10 @@ async function downloadImage(){
   const origSrcs = imgs.map(img => img.src);
   await Promise.all(imgs.map(img => new Promise(resolve => {
     if(!img.src){ resolve(); return; }
+    // 已經是 base64 就跳過轉換
+    if(img.src.startsWith('data:')){ resolve(); return; }
     const tmp = new Image();
+    tmp.crossOrigin = 'anonymous';   // 要求 CORS，避免 canvas 被汙染
     tmp.onload = () => {
       try {
         const cv = document.createElement('canvas');
@@ -2079,6 +2156,20 @@ async function downloadImage(){
   const headerEl = clone.querySelector('.qp-header');
   if(titleEl) titleEl.style.cssText = 'position:absolute!important;top:50%!important;transform:translateY(-50%)!important;left:0!important;right:0!important;text-align:center!important;';
   if(headerEl) headerEl.style.cssText = 'display:flex!important;flex-wrap:nowrap!important;position:relative!important;align-items:center!important;';
+
+  // 在手機 viewport 截桌機尺寸圖時，手機版 @media 的字體規則仍會套用，
+  // 名稱會卡在 10px 看起來超小。這裡明確覆寫成桌機看起來正常的尺寸：
+  //   標題 1.25em × 13.9 ≈ 17.4px
+  //   名稱 = 標題 × 90% = 15.6px
+  //   備註 = 品名 12.65px × 80% ≈ 10.1px
+  clone.querySelectorAll('.qp-co-name').forEach(el => {
+    el.style.setProperty('font-size','15.6px','important');
+    el.style.setProperty('line-height','1.35','important');
+  });
+  clone.querySelectorAll('.qi-remark').forEach(el => {
+    el.style.setProperty('font-size','10.1px','important');
+    el.style.setProperty('line-height','1.3','important');
+  });
 
   document.body.appendChild(clone);
   clone.style.visibility = 'visible';
@@ -2134,7 +2225,9 @@ async function printQuote(){
   const origSrcs = imgs.map(img => img.src);
   await Promise.all(imgs.map(img => new Promise(resolve => {
     if(!img.src){ resolve(); return; }
+    if(img.src.startsWith('data:')){ resolve(); return; }
     const tmp = new Image();
+    tmp.crossOrigin = 'anonymous';
     tmp.onload = () => {
       try {
         const cv = document.createElement('canvas');
