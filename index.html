@@ -456,20 +456,21 @@ table.qi td.r{text-align:right}
           <div id="q-tax-note" style="display:none;font-size:11px;color:var(--text3);padding:4px 0">此公司設定為不開發票</div>
           <div class="field"><label>折扣（%）</label><input id="q-disc" type="number" value="0" min="0" max="100" oninput="markUnsaved();renderPreview()"></div>
           <div class="field"><label>備註</label><textarea id="q-notes" rows="3" oninput="markUnsaved();renderPreview()">感謝您的詢價，如有疑問請隨時與我們聯繫。</textarea></div>
+        </div>
 
-          <!-- 後台資訊（不顯示於報價單上）-->
-          <div style="margin-top:16px;padding:12px;background:#f3f4f6;border:1px solid #d8dde3;border-radius:var(--radius)">
-            <div style="font-size:11px;color:#666;margin-bottom:10px;font-weight:600">📋 後台資訊（不會顯示在報價單上）</div>
-            <div class="field" style="margin-bottom:8px">
-              <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-weight:normal">
+        <div>
+          <h3>後台資訊（不會顯示在報價單上）</h3>
+          <div class="field"><label>發票號碼</label>
+            <div style="display:flex;gap:10px;align-items:center">
+              <input id="q-invoice-number" oninput="markUnsaved()" style="flex:1">
+              <label style="display:flex;align-items:center;gap:5px;cursor:pointer;white-space:nowrap;font-weight:normal;font-size:13px">
                 <input type="checkbox" id="q-no-invoice" onchange="markUnsaved()" style="margin:0">
-                <span>不需開發票</span>
+                不需開發票
               </label>
             </div>
-            <div class="field" style="margin-bottom:8px"><label style="font-size:11px">發票號碼</label><input id="q-invoice-number" oninput="markUnsaved()" style="font-size:12px"></div>
-            <div class="field" style="margin-bottom:8px"><label style="font-size:11px">發票日期</label><input type="date" id="q-invoice-date" oninput="markUnsaved()" style="font-size:12px"></div>
-            <div class="field" style="margin-bottom:0"><label style="font-size:11px">後台備註</label><textarea id="q-closed-notes" rows="2" oninput="markUnsaved()" placeholder="（內部用，不會顯示在報價單）" style="font-size:12px"></textarea></div>
           </div>
+          <div class="field"><label>發票日期</label><input type="date" id="q-invoice-date" oninput="markUnsaved()"></div>
+          <div class="field"><label>後台備註</label><textarea id="q-closed-notes" rows="3" oninput="markUnsaved()" placeholder="（內部用，不會顯示在報價單）"></textarea></div>
         </div>
       </div>
 
@@ -2445,7 +2446,7 @@ function getDefaultFilename(ext){
 }
 
 // ===== BOOT =====
-console.log('%c[報價單系統] BUILD: 2026-05-07-r10 print-fullwidth','background:#185FA5;color:#fff;padding:4px 8px;border-radius:3px;font-weight:bold');
+console.log('%c[報價單系統] BUILD: 2026-05-07-r11 backend-info-restyle','background:#185FA5;color:#fff;padding:4px 8px;border-radius:3px;font-weight:bold');
 initApp();
 
 // 手機版：顯示下載按鈕，隱藏列印按鈕
