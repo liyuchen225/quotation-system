@@ -201,6 +201,9 @@ table.qi td.r{text-align:right}
 .qli-tag-sent{background:var(--blue-lt);color:var(--blue-dk)}
 .qli-tag-accepted{background:var(--green-lt);color:var(--green)}
 .qli-tag-cancelled{background:var(--red-lt);color:var(--red)}
+.qli-tag-closed{background:#fff3d6;color:#995c00}
+.qli-tag-uninvoiced{background:#dc3545;color:#fff}
+.qli-tag-noinvoice{background:#9aa0a6;color:#fff}
 
 /* TOAST */
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#222;color:#fff;font-size:12px;padding:9px 20px;border-radius:20px;z-index:9999;opacity:0;transition:opacity .25s;pointer-events:none;white-space:nowrap}
@@ -381,6 +384,7 @@ table.qi td.r{text-align:right}
           <option value="sent">已發送</option>
           <option value="accepted">已接受</option>
           <option value="cancelled">已取消</option>
+          <option value="closed">結案</option>
         </select>
       </div>
       <div style="flex:1"></div>
@@ -452,6 +456,20 @@ table.qi td.r{text-align:right}
           <div id="q-tax-note" style="display:none;font-size:11px;color:var(--text3);padding:4px 0">此公司設定為不開發票</div>
           <div class="field"><label>折扣（%）</label><input id="q-disc" type="number" value="0" min="0" max="100" oninput="markUnsaved();renderPreview()"></div>
           <div class="field"><label>備註</label><textarea id="q-notes" rows="3" oninput="markUnsaved();renderPreview()">感謝您的詢價，如有疑問請隨時與我們聯繫。</textarea></div>
+
+          <!-- 後台資訊（不顯示於報價單上）-->
+          <div style="margin-top:16px;padding:12px;background:#f3f4f6;border:1px solid #d8dde3;border-radius:var(--radius)">
+            <div style="font-size:11px;color:#666;margin-bottom:10px;font-weight:600">📋 後台資訊（不會顯示在報價單上）</div>
+            <div class="field" style="margin-bottom:8px">
+              <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-weight:normal">
+                <input type="checkbox" id="q-no-invoice" onchange="markUnsaved()" style="margin:0">
+                <span>不需開發票</span>
+              </label>
+            </div>
+            <div class="field" style="margin-bottom:8px"><label style="font-size:11px">發票號碼</label><input id="q-invoice-number" oninput="markUnsaved()" style="font-size:12px"></div>
+            <div class="field" style="margin-bottom:8px"><label style="font-size:11px">發票日期</label><input type="date" id="q-invoice-date" oninput="markUnsaved()" style="font-size:12px"></div>
+            <div class="field" style="margin-bottom:0"><label style="font-size:11px">後台備註</label><textarea id="q-closed-notes" rows="2" oninput="markUnsaved()" placeholder="（內部用，不會顯示在報價單）" style="font-size:12px"></textarea></div>
+          </div>
         </div>
       </div>
 
@@ -545,11 +563,15 @@ table.qi td.r{text-align:right}
         <div style="padding:8px 10px;border-bottom:0.5px solid var(--border)">
           <input id="q-search" placeholder="搜尋單號或客戶…" style="width:100%;font-size:12px;padding:5px 8px;border:1px solid #ccc;border-radius:var(--radius);background:var(--bg)" oninput="renderQuoteList(this.value)">
         </div>
-        <div style="padding:6px 10px;border-bottom:0.5px solid var(--border);display:flex;gap:4px;flex-wrap:wrap">
-          <button class="btn btn-xs" id="qf-all" onclick="filterQuotes('all')" style="background:var(--blue);color:#fff;border-color:var(--blue)">全部</button>
-          <button class="btn btn-xs" id="qf-draft" onclick="filterQuotes('draft')">草稿</button>
-          <button class="btn btn-xs" id="qf-sent" onclick="filterQuotes('sent')">已發送</button>
-          <button class="btn btn-xs" id="qf-accepted" onclick="filterQuotes('accepted')">已接受</button>
+        <div style="padding:6px 10px;border-bottom:0.5px solid var(--border);display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+          <select id="qf-active-sel" onchange="filterQuotes(this.value)" style="font-size:12px;padding:4px 8px;border:1px solid var(--blue);border-radius:var(--radius);background:var(--blue);color:#fff;font-weight:500">
+            <option value="all">全部</option>
+            <option value="draft">草稿</option>
+            <option value="sent">已發送</option>
+            <option value="accepted">已接受</option>
+          </select>
+          <button class="btn btn-xs" id="qf-closed" onclick="filterQuotes('closed')">結案<span id="qf-closed-badge"></span></button>
+          <button class="btn btn-xs" id="qf-cancelled" onclick="filterQuotes('cancelled')">已取消</button>
         </div>
         <div class="list-items" id="quotes-list" style="flex:1;overflow-y:auto"></div>
       </div>
@@ -557,14 +579,34 @@ table.qi td.r{text-align:right}
       <div style="display:flex;flex-direction:column;background:var(--bg)">
         <div id="quotes-toolbar" style="display:none;padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:#fafafa">
           <span id="qt-num-label" style="font-size:13px;font-weight:500;color:var(--text)"></span>
-          <div style="display:flex;gap:8px">
-            <button class="btn btn-sm btn-primary" onclick="editSelectedQuote()">✏️ 開啟修改</button>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-sm btn-primary" id="qt-btn-edit" onclick="editSelectedQuote()">✏️ 開啟修改</button>
             <button class="btn btn-sm" onclick="copySelectedQuote()">📋 複製</button>
-            <button class="btn btn-sm btn-danger" onclick="deleteSelectedQuote()">🗑 刪除</button>
+            <button class="btn btn-sm" id="qt-btn-print" onclick="printQuote()" style="display:none">🖨️ 列印 / PDF</button>
+            <button class="btn btn-sm btn-primary" id="qt-btn-save-backend" onclick="saveBackendInfoFromList()" style="display:none">💾 儲存後台資訊</button>
+            <button class="btn btn-sm btn-danger" id="qt-btn-delete" onclick="deleteSelectedQuote()">🗑 刪除</button>
           </div>
         </div>
         <div id="quotes-preview" class="preview-area" style="flex:1;overflow-y:auto">
           <div id="q2-empty" style="display:flex;align-items:center;justify-content:center;min-height:200px;color:var(--text3);font-size:13px">請從左側選擇報價單</div>
+
+          <!-- 結案後台編輯區（只在 status='closed' 時顯示）-->
+          <div id="q2-backend-info" style="display:none;margin:8px 14px 0 14px;padding:12px;background:#f3f4f6;border:1px solid #d8dde3;border-radius:var(--radius)">
+            <div style="font-size:11px;color:#666;margin-bottom:10px;font-weight:600">📋 後台資訊（不會顯示在報價單上，編輯後請按「儲存後台資訊」）</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 12px;margin-bottom:8px">
+              <div class="field" style="margin-bottom:0">
+                <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-weight:normal;font-size:11px">
+                  <input type="checkbox" id="q2-no-invoice" style="margin:0">
+                  <span>不需開發票</span>
+                </label>
+              </div>
+              <div></div>
+              <div class="field" style="margin-bottom:0"><label style="font-size:11px">發票號碼</label><input id="q2-invoice-number" style="font-size:12px"></div>
+              <div class="field" style="margin-bottom:0"><label style="font-size:11px">發票日期</label><input type="date" id="q2-invoice-date" style="font-size:12px"></div>
+            </div>
+            <div class="field" style="margin-bottom:0"><label style="font-size:11px">後台備註</label><textarea id="q2-closed-notes" rows="2" style="font-size:12px"></textarea></div>
+          </div>
+
           <div class="quote-paper" id="q2-paper" style="display:none">
             <div class="qp-header">
               <div id="q2-logo"></div>
@@ -1109,6 +1151,10 @@ async function saveQuote(manual){
     id:num,num,date:gv('q-date'),validity:gv('q-validity'),
     tax:gv('q-tax'),disc:gv('q-disc'),notes:gv('q-notes'),
     status:ge('q-status')?.value||'draft',
+    closedNotes:gv('q-closed-notes')||'',
+    invoiceDate:gv('q-invoice-date')||'',
+    invoiceNumber:gv('q-invoice-number')||'',
+    noInvoice: !!ge('q-no-invoice')?.checked,
     companyId:selectedCompany?.id||null,
     salesIdx:selectedSalesIdx!=null?Number(selectedSalesIdx):null,
     clientId:selectedClient?.id||null,
@@ -1126,6 +1172,19 @@ async function saveQuote(manual){
   }catch(e){
     setSaveDot('saved','已儲存（本機）');
     if(manual)showToast('⚠️ 雲端連線失敗，已存至本機');
+  }
+  // 手動儲存且狀態是結案 → 跳到報價單管理初始畫面
+  if(manual && data.status==='closed'){
+    setTimeout(()=>{
+      switchTab('quotes');
+      selectedQuoteId=null;
+      filterQuotes('all'); // 預設篩選回到全部（進行中）
+      // 隱藏右側預覽
+      const empty=ge('q2-empty'), paper=ge('q2-paper'), toolbar=ge('quotes-toolbar');
+      if(empty)empty.style.display='flex';
+      if(paper)paper.style.display='none';
+      if(toolbar)toolbar.style.display='none';
+    }, 800);
   }
 }
 
@@ -2055,18 +2114,53 @@ let selectedQuoteId=null;
 
 function filterQuotes(f){
   quoteFilter=f;
-  ['all','draft','sent','accepted'].forEach(k=>{
-    const el=ge('qf-'+k);if(!el)return;
-    const isActive=k===f;
-    el.style.background=isActive?'var(--blue)':'';
-    el.style.color=isActive?'#fff':'';
-    el.style.borderColor=isActive?'var(--blue)':'';
-  });
+  const sel=ge('qf-active-sel'), btnClosed=ge('qf-closed'), btnCancel=ge('qf-cancelled');
+  // 三個 UI 互斥：哪個為 active，其他變灰
+  const isClosed = f==='closed';
+  const isCancel = f==='cancelled';
+  const isActiveGroup = !isClosed && !isCancel; // all/draft/sent/accepted 屬於下拉組
+  if(sel){
+    if(isActiveGroup){
+      sel.value=f;
+      sel.style.background='var(--blue)';
+      sel.style.color='#fff';
+      sel.style.borderColor='var(--blue)';
+    }else{
+      sel.value='all';
+      sel.style.background='';
+      sel.style.color='';
+      sel.style.borderColor='';
+    }
+  }
+  if(btnClosed){
+    btnClosed.style.background = isClosed?'var(--blue)':'';
+    btnClosed.style.color = isClosed?'#fff':'';
+    btnClosed.style.borderColor = isClosed?'var(--blue)':'';
+  }
+  if(btnCancel){
+    btnCancel.style.background = isCancel?'var(--blue)':'';
+    btnCancel.style.color = isCancel?'#fff':'';
+    btnCancel.style.borderColor = isCancel?'var(--blue)':'';
+  }
   renderQuoteList(ge('q-search')?.value||'');
 }
 
+// 計算結案中未開發票的數量（排除已勾「不需開發票」的）並更新 badge
+function updateClosedBadge(){
+  const all = lsGet(SK.quotes)||[];
+  const uninvoiced = all.filter(q => q.status==='closed' && !q.invoiceNumber && !q.noInvoice).length;
+  const badge = ge('qf-closed-badge');
+  if(badge){
+    if(uninvoiced>0){
+      badge.innerHTML = ` <span style="display:inline-block;background:#dc3545;color:#fff;font-size:10px;padding:1px 6px;border-radius:8px;margin-left:3px;font-weight:500">⚠️ ${uninvoiced}</span>`;
+    }else{
+      badge.innerHTML = '';
+    }
+  }
+}
+
 function statusTag(s){
-  const map={draft:'草稿 qli-tag-draft',sent:'已發送 qli-tag-sent',accepted:'已接受 qli-tag-accepted',cancelled:'已取消 qli-tag-cancelled'};
+  const map={draft:'草稿 qli-tag-draft',sent:'已發送 qli-tag-sent',accepted:'已接受 qli-tag-accepted',cancelled:'已取消 qli-tag-cancelled',closed:'結案 qli-tag-closed'};
   const val=map[s]||'草稿 qli-tag-draft';const parts=val.split(' ');
   return`<span class="qli-tag ${parts[1]}">${parts[0]}</span>`;
 }
@@ -2079,15 +2173,31 @@ function renderQuoteList(search=''){
   let savedQuotes=Array.from(seenNums.values()).sort((a,b)=>new Date(b.savedAt||b.date||0)-new Date(a.savedAt||a.date||0));
   const q=(search||'').toLowerCase();
   if(q)savedQuotes=savedQuotes.filter(qt=>(qt.num||'').toLowerCase().includes(q)||getClientName(qt.clientId).toLowerCase().includes(q));
-  if(quoteFilter&&quoteFilter!=='all')savedQuotes=savedQuotes.filter(qt=>(qt.status||'draft')===quoteFilter);
+  // 篩選邏輯：'all' = 草稿/已發送/已接受（排除結案、已取消）；其他狀態按字面比對
+  if(quoteFilter==='all'){
+    savedQuotes=savedQuotes.filter(qt=>['draft','sent','accepted'].includes(qt.status||'draft'));
+  }else if(quoteFilter){
+    savedQuotes=savedQuotes.filter(qt=>(qt.status||'draft')===quoteFilter);
+  }
+  // 重算結案 badge（不論目前在哪個篩選都要算）
+  updateClosedBadge();
   const el=ge('quotes-list');if(!el)return;
   if(!savedQuotes.length){el.innerHTML='<div style="padding:16px;font-size:12px;color:var(--text3)">'+(q||quoteFilter!=='all'?'查無符合報價單':'尚無儲存的報價單')+'</div>';return;}
   el.innerHTML=savedQuotes.map(qt=>{
     const clName=getClientName(qt.clientId);const coName=getCompanyName(qt.companyId);
     const rawDate=qt.date||qt.savedAt?.slice(0,10)||'';const date=rawDate.length===10?rawDate.slice(5).replace('-','/'):'';const qid=qt.id||qt.num;const isSelected=qid===selectedQuoteId;
+    // 結案單追加發票狀態 tag
+    let extraTag='';
+    if(qt.status==='closed'){
+      if(qt.noInvoice){
+        extraTag='<span class="qli-tag qli-tag-noinvoice">無需發票</span>';
+      }else if(!qt.invoiceNumber){
+        extraTag='<span class="qli-tag qli-tag-uninvoiced">⚠️ 未開發票</span>';
+      }
+    }
     return`<div class="quote-list-item${isSelected?' selected':''}" data-qid="${qid}" onclick="previewQuote('${qid}')">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:6px">
-        <div class="qli-num" style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${qt.num||qt.id}${statusTag(qt.status||'draft')}</div>
+        <div class="qli-num" style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${qt.num||qt.id}${statusTag(qt.status||'draft')}${extraTag}</div>
         <div class="qli-date">${date}</div>
       </div>
       <div class="qli-cl">${coName?coName+'　':''}${clName||'（無客戶）'}</div>
@@ -2111,7 +2221,25 @@ function previewQuote(id){
   // 工具列
   const toolbar=ge('quotes-toolbar'),numLabel=ge('qt-num-label');
   if(toolbar)toolbar.style.display='flex';
-  if(numLabel)numLabel.textContent=(qt.num||qt.id)+(qt.status?'　'+{draft:'草稿',sent:'已發送',accepted:'已接受',cancelled:'已取消'}[qt.status]||'':'');
+  const isClosed = qt.status==='closed';
+  if(numLabel)numLabel.textContent=(qt.num||qt.id)+(qt.status?'　'+{draft:'草稿',sent:'已發送',accepted:'已接受',cancelled:'已取消',closed:'結案'}[qt.status]||'':'');
+
+  // 結案的單：隱藏「開啟修改」「刪除」、顯示「列印 / PDF」「儲存後台資訊」
+  const btnEdit=ge('qt-btn-edit'), btnDelete=ge('qt-btn-delete'), btnPrint=ge('qt-btn-print'), btnSaveBackend=ge('qt-btn-save-backend');
+  if(btnEdit) btnEdit.style.display = isClosed ? 'none' : '';
+  if(btnDelete) btnDelete.style.display = isClosed ? 'none' : '';
+  if(btnPrint) btnPrint.style.display = isClosed ? '' : 'none';
+  if(btnSaveBackend) btnSaveBackend.style.display = isClosed ? '' : 'none';
+
+  // 結案後台編輯區：填入 4 欄目前值
+  const backendBox = ge('q2-backend-info');
+  if(backendBox) backendBox.style.display = isClosed ? 'block' : 'none';
+  if(isClosed){
+    if(ge('q2-invoice-number')) ge('q2-invoice-number').value = qt.invoiceNumber || '';
+    if(ge('q2-invoice-date'))   ge('q2-invoice-date').value   = qt.invoiceDate   || '';
+    if(ge('q2-closed-notes'))   ge('q2-closed-notes').value   = qt.closedNotes   || '';
+    if(ge('q2-no-invoice'))     ge('q2-no-invoice').checked   = !!qt.noInvoice;
+  }
 
   // 顯示 quote-paper，隱藏空白提示
   ge('q2-empty').style.display='none';
@@ -2142,6 +2270,30 @@ function previewQuote(id){
 function editSelectedQuote(){
   if(!selectedQuoteId){showToast('請先選擇報價單');return;}
   openQuote(selectedQuoteId);
+}
+
+// 從結案列表預覽頁儲存後台資訊（4 個欄位）
+async function saveBackendInfoFromList(){
+  if(!selectedQuoteId){showToast('請先選擇報價單');return;}
+  const savedQuotes=lsGet(SK.quotes)||[];
+  const idx=savedQuotes.findIndex(q=>(q.id||q.num)===selectedQuoteId);
+  if(idx<0){showToast('找不到報價單資料');return;}
+  // 抓 4 個欄位的當前值
+  savedQuotes[idx].invoiceNumber = ge('q2-invoice-number')?.value || '';
+  savedQuotes[idx].invoiceDate   = ge('q2-invoice-date')?.value   || '';
+  savedQuotes[idx].closedNotes   = ge('q2-closed-notes')?.value   || '';
+  savedQuotes[idx].noInvoice     = !!ge('q2-no-invoice')?.checked;
+  savedQuotes[idx].savedAt       = new Date().toISOString();
+  lsSet(SK.quotes, savedQuotes);
+  // 同步到雲端
+  try{
+    await apiPost({action:'saveQuote',data:savedQuotes[idx]});
+    showToast('✓ 後台資訊已儲存');
+  }catch(e){
+    showToast('⚠️ 雲端連線失敗，已存至本機');
+  }
+  // 重新渲染列表（更新 badge 數量、未開發票標籤）
+  renderQuoteList(ge('q-search')?.value||'');
 }
 
 function copySelectedQuote(){
@@ -2205,6 +2357,12 @@ function openQuote(id){
     if(statusEl.value !== qt.status) statusEl.value = 'draft';
   }
 
+  // 後台資訊欄位（4 欄）
+  if(ge('q-invoice-number')) ge('q-invoice-number').value = qt.invoiceNumber || '';
+  if(ge('q-invoice-date'))   ge('q-invoice-date').value   = qt.invoiceDate || '';
+  if(ge('q-closed-notes'))   ge('q-closed-notes').value   = qt.closedNotes || '';
+  if(ge('q-no-invoice'))     ge('q-no-invoice').checked   = !!qt.noInvoice;
+
   // --- 設定公司與業務（salesIdx 強制轉數字）---
   selectedCompany = qt.companyId
     ? companies.find(c=>String(c.id)===String(qt.companyId)) || null
@@ -2257,6 +2415,11 @@ function newQuote(){
   ge('q-validity').value='7';ge('q-tax').value='5';ge('q-disc').value='0';
   ge('q-notes').value='感謝您的詢價，如有疑問請隨時與我們聯繫。';
   ge('q-status').value='draft';
+  // 清空後台資訊欄位
+  if(ge('q-invoice-number')) ge('q-invoice-number').value='';
+  if(ge('q-invoice-date'))   ge('q-invoice-date').value='';
+  if(ge('q-closed-notes'))   ge('q-closed-notes').value='';
+  if(ge('q-no-invoice'))     ge('q-no-invoice').checked=false;
   selectedCompany=null;selectedSalesIdx=null;selectedClient=null;selectedContactIdx=null;
   ge('q-co-sel').value='';ge('q-cl-search').value='';ge('q-cl-info').style.display='none';ge('q-sales-wrap').style.display='none';
   renderCoSelect();
@@ -2282,7 +2445,7 @@ function getDefaultFilename(ext){
 }
 
 // ===== BOOT =====
-console.log('%c[報價單系統] BUILD: 2026-05-06-r8 cleanup','background:#185FA5;color:#fff;padding:4px 8px;border-radius:3px;font-weight:bold');
+console.log('%c[報價單系統] BUILD: 2026-05-06-r9 closed-status','background:#185FA5;color:#fff;padding:4px 8px;border-radius:3px;font-weight:bold');
 initApp();
 
 // 手機版：顯示下載按鈕，隱藏列印按鈕
@@ -2433,8 +2596,17 @@ async function downloadImage(){
 
 // ===== 列印：html2canvas 截圖 =====
 async function printQuote(){
-  const paper = document.querySelector('#tab-quote .quote-paper');
-  if(!paper){ showToast('請先開啟報價單'); return; }
+  // 看目前在哪個分頁就印那張紙：
+  //   tab-quote (報價單編輯頁) → #p-paper
+  //   tab-quotes (報價單管理頁) → #q2-paper
+  const activePanel = document.querySelector('.panel.active');
+  let paper = null;
+  if(activePanel && activePanel.id === 'tab-quotes'){
+    paper = document.querySelector('#tab-quotes .quote-paper');
+  } else {
+    paper = document.querySelector('#tab-quote .quote-paper');
+  }
+  if(!paper || paper.style.display === 'none'){ showToast('請先開啟報價單'); return; }
 
   // 把 paper 暫時搬到 body 底下，並標記 .printing；CSS 會處理「只顯示這張紙、套桌機版尺寸」
   // 不再走 html2canvas，直接讓瀏覽器原生列印 → 螢幕看到什麼、印出來就是什麼
