@@ -592,20 +592,17 @@ table.qi td.r{text-align:right}
           <div id="q2-empty" style="display:flex;align-items:center;justify-content:center;min-height:200px;color:var(--text3);font-size:13px">請從左側選擇報價單</div>
 
           <!-- 結案後台編輯區（只在 status='closed' 時顯示）-->
-          <div id="q2-backend-info" style="display:none;margin:8px 14px 0 14px;padding:12px;background:#f3f4f6;border:1px solid #d8dde3;border-radius:var(--radius)">
-            <div style="font-size:11px;color:#666;margin-bottom:10px;font-weight:600">📋 後台資訊（不會顯示在報價單上，編輯後請按「儲存後台資訊」）</div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 12px;margin-bottom:8px">
-              <div class="field" style="margin-bottom:0">
-                <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-weight:normal;font-size:11px">
-                  <input type="checkbox" id="q2-no-invoice" style="margin:0">
-                  <span>不需開發票</span>
-                </label>
-              </div>
-              <div></div>
-              <div class="field" style="margin-bottom:0"><label style="font-size:11px">發票號碼</label><input id="q2-invoice-number" style="font-size:12px"></div>
-              <div class="field" style="margin-bottom:0"><label style="font-size:11px">發票日期</label><input type="date" id="q2-invoice-date" style="font-size:12px"></div>
+          <div id="q2-backend-info" style="display:none;margin:8px 14px 0 14px;padding:14px 16px;background:#fff;border-bottom:1px solid var(--border)">
+            <div style="font-size:13px;color:#666;margin-bottom:10px;font-weight:600">後台資訊（不會顯示在報價單上）</div>
+            <div style="display:grid;grid-template-columns:1.2fr 1fr auto;gap:10px 16px;margin-bottom:10px;align-items:end">
+              <div class="field" style="margin-bottom:0"><label>發票號碼</label><input id="q2-invoice-number"></div>
+              <div class="field" style="margin-bottom:0"><label>發票日期</label><input type="date" id="q2-invoice-date"></div>
+              <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-weight:normal;white-space:nowrap;padding-bottom:8px">
+                <input type="checkbox" id="q2-no-invoice" style="margin:0">
+                <span>不需開發票</span>
+              </label>
             </div>
-            <div class="field" style="margin-bottom:0"><label style="font-size:11px">後台備註</label><textarea id="q2-closed-notes" rows="2" style="font-size:12px"></textarea></div>
+            <div class="field" style="margin-bottom:0"><label>後台備註</label><textarea id="q2-closed-notes" rows="2"></textarea></div>
           </div>
 
           <div class="quote-paper" id="q2-paper" style="display:none">
@@ -2446,7 +2443,7 @@ function getDefaultFilename(ext){
 }
 
 // ===== BOOT =====
-console.log('%c[報價單系統] BUILD: 2026-05-07-r11 backend-info-restyle','background:#185FA5;color:#fff;padding:4px 8px;border-radius:3px;font-weight:bold');
+console.log('%c[報價單系統] BUILD: 2026-05-07-r12 closed-list-restyle','background:#185FA5;color:#fff;padding:4px 8px;border-radius:3px;font-weight:bold');
 initApp();
 
 // 手機版：顯示下載按鈕，隱藏列印按鈕
