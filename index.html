@@ -222,12 +222,12 @@ table.qi td.r{text-align:right}
   body.printing-mode > *{display:none!important}
   body.printing-mode > .quote-paper.printing{display:block!important}
 
-  /* 列印的紙張：強制套桌機版尺寸跟 padding，覆蓋手機版的 responsive CSS */
+  /* 列印的紙張：撐滿 A4 全寬，padding 略增讓內容不要太貼紙邊 */
   body.printing-mode > .quote-paper.printing{
     position:static!important;
-    margin:0 auto!important;
-    width:680px!important;max-width:680px!important;
-    padding:36px 42px!important;
+    margin:0!important;
+    width:100%!important;max-width:none!important;
+    padding:48px 56px!important;
     font-size:13.9px!important;
     background:white!important;
     box-shadow:none!important;border-radius:0!important;
@@ -2445,7 +2445,7 @@ function getDefaultFilename(ext){
 }
 
 // ===== BOOT =====
-console.log('%c[報價單系統] BUILD: 2026-05-06-r9 closed-status','background:#185FA5;color:#fff;padding:4px 8px;border-radius:3px;font-weight:bold');
+console.log('%c[報價單系統] BUILD: 2026-05-07-r10 print-fullwidth','background:#185FA5;color:#fff;padding:4px 8px;border-radius:3px;font-weight:bold');
 initApp();
 
 // 手機版：顯示下載按鈕，隱藏列印按鈕
