@@ -592,7 +592,7 @@ table.qi td.r{text-align:right}
           <div id="q2-empty" style="display:flex;align-items:center;justify-content:center;min-height:200px;color:var(--text3);font-size:13px">請從左側選擇報價單</div>
 
           <!-- 結案後台編輯區（只在 status='closed' 時顯示）-->
-          <div id="q2-backend-info" style="display:none;margin:8px 14px 0 14px;padding:14px 16px;background:#fff;border-bottom:1px solid var(--border)">
+          <div id="q2-backend-info" style="display:none;margin:0;padding:14px 16px;background:#fff">
             <div style="font-size:13px;color:#666;margin-bottom:10px;font-weight:600">後台資訊（不會顯示在報價單上）</div>
             <div style="display:grid;grid-template-columns:1.2fr 1fr auto;gap:10px 16px;margin-bottom:10px;align-items:end">
               <div class="field" style="margin-bottom:0"><label>發票號碼</label><input id="q2-invoice-number"></div>
@@ -2443,7 +2443,7 @@ function getDefaultFilename(ext){
 }
 
 // ===== BOOT =====
-console.log('%c[報價單系統] BUILD: 2026-05-07-r12 closed-list-restyle','background:#185FA5;color:#fff;padding:4px 8px;border-radius:3px;font-weight:bold');
+console.log('%c[報價單系統] BUILD: 2026-05-08-r13 backend-info-fullwidth','background:#185FA5;color:#fff;padding:4px 8px;border-radius:3px;font-weight:bold');
 initApp();
 
 // 手機版：顯示下載按鈕，隱藏列印按鈕
