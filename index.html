@@ -2222,10 +2222,10 @@ function previewQuote(id){
   const isClosed = qt.status==='closed';
   if(numLabel)numLabel.textContent=(qt.num||qt.id)+(qt.status?'　'+{draft:'草稿',sent:'已發送',accepted:'已接受',cancelled:'已取消',closed:'結案'}[qt.status]||'':'');
 
-  // 結案的單：隱藏「開啟修改」「刪除」、顯示「列印 / PDF」「儲存後台資訊」
+  // 結案的單：隱藏「開啟修改」、顯示「列印 / PDF」「儲存後台資訊」；「刪除」一律顯示
   const btnEdit=ge('qt-btn-edit'), btnDelete=ge('qt-btn-delete'), btnPrint=ge('qt-btn-print'), btnSaveBackend=ge('qt-btn-save-backend');
   if(btnEdit) btnEdit.style.display = isClosed ? 'none' : '';
-  if(btnDelete) btnDelete.style.display = isClosed ? 'none' : '';
+  if(btnDelete) btnDelete.style.display = '';
   if(btnPrint) btnPrint.style.display = isClosed ? '' : 'none';
   if(btnSaveBackend) btnSaveBackend.style.display = isClosed ? '' : 'none';
 
@@ -2319,7 +2319,12 @@ function copySelectedQuote(){
 async function deleteSelectedQuote(){
   if(!selectedQuoteId){showToast('請先選擇報價單');return;}
   const qt=(lsGet(SK.quotes)||[]).find(q=>(q.id||q.num)===selectedQuoteId);
-  if(!confirm(`確定要刪除報價單 ${qt?.num||selectedQuoteId}？此操作無法還原。`))return;
+  // 結案單刪除：明確警示
+  const isClosed = qt?.status==='closed';
+  const msg = isClosed
+    ? `⚠️ 確定要刪除這張結案單？\n\n單號：${qt?.num||selectedQuoteId}\n發票號碼：${qt?.invoiceNumber||'（空）'}\n\n此操作無法還原。`
+    : `確定要刪除報價單 ${qt?.num||selectedQuoteId}？此操作無法還原。`;
+  if(!confirm(msg))return;
   let savedQuotes=lsGet(SK.quotes)||[];
   savedQuotes=savedQuotes.filter(q=>(q.id||q.num)!==selectedQuoteId);lsSet(SK.quotes,savedQuotes);
   try{await apiPost({action:'deleteQuote',id:selectedQuoteId});}catch(e){}
@@ -2443,7 +2448,7 @@ function getDefaultFilename(ext){
 }
 
 // ===== BOOT =====
-console.log('%c[報價單系統] BUILD: 2026-05-08-r13 backend-info-fullwidth','background:#185FA5;color:#fff;padding:4px 8px;border-radius:3px;font-weight:bold');
+console.log('%c[報價單系統] BUILD: 2026-05-08-r14 closed-delete','background:#185FA5;color:#fff;padding:4px 8px;border-radius:3px;font-weight:bold');
 initApp();
 
 // 手機版：顯示下載按鈕，隱藏列印按鈕
