@@ -1411,9 +1411,28 @@ function renderPreviewTo(ids, co, cl, salesIdx, contactIdx, qtItems, disc, taxRa
     }else{coSubEl.innerHTML='';}
   }
 
-  // 匯款
+  // 匯款：依公司有無填寫銀行/帳號決定顯示
   const bankEl = ge(ids.bankBlock);
-  if(bankEl){bankEl.innerHTML=co?`${co.bankName}<br>帳號：${co.bankAcct}`:'（請選擇出單公司）';bankEl.style.color=co?'#444':'#ccc';}
+  const bankWrap = bankEl?.closest('.qp-bank');
+  if(bankEl){
+    if(co && (co.bankName || co.bankAcct)){
+      // 至少有一項有填 → 顯示有填的那幾行
+      const lines=[];
+      if(co.bankName) lines.push(co.bankName);
+      if(co.bankAcct) lines.push('帳號：'+co.bankAcct);
+      bankEl.innerHTML=lines.join('<br>');
+      bankEl.style.color='#444';
+      if(bankWrap) bankWrap.style.display='';
+    }else if(co){
+      // 已選公司但銀行/帳號都空 → 整塊「匯款資訊」隱藏
+      if(bankWrap) bankWrap.style.display='none';
+    }else{
+      // 尚未選公司 → 顯示提示
+      bankEl.innerHTML='（請選擇出單公司）';
+      bankEl.style.color='#ccc';
+      if(bankWrap) bankWrap.style.display='';
+    }
+  }
 
   // 客戶
   let clHtml='（尚未選擇客戶）';
@@ -2448,7 +2467,7 @@ function getDefaultFilename(ext){
 }
 
 // ===== BOOT =====
-console.log('%c[報價單系統] BUILD: 2026-05-14-r16 backend-info-padding-match','background:#185FA5;color:#fff;padding:4px 8px;border-radius:3px;font-weight:bold');
+console.log('%c[報價單系統] BUILD: 2026-05-14-r17 conditional-bank','background:#185FA5;color:#fff;padding:4px 8px;border-radius:3px;font-weight:bold');
 initApp();
 
 // 手機版：顯示下載按鈕，隱藏列印按鈕
