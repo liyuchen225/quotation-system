@@ -1013,7 +1013,7 @@ async function initApp(){
         const mapped=result.companies.map(co=>{
           const sid=String(co.id);
           const cached=cachedCos.find(cc=>String(cc.id)===sid);
-          return{...co,id:sid,logo:co.logo||cached?.logo||'',code:co.code||cached?.code||'',
+          return{...co,id:sid,logo:co.logo||cached?.logo||'',stamp:co.stamp||cached?.stamp||'',code:co.code||cached?.code||'',
             zip:co.zip||cached?.zip||'',city:co.city||cached?.city||'',addr:co.addr||cached?.addr||'',tel:co.tel||cached?.tel||'',
             email:co.email||cached?.email||'',bankName:co.bankName||cached?.bankName||'',
             bankAcct:co.bankAcct||cached?.bankAcct||'',brandColor:co.brandColor||cached?.brandColor||'#185FA5',
@@ -1799,6 +1799,7 @@ function coForm(co,isNew=false){
     <td><button class="del-btn" onclick="rmCoContact(${i})">×</button></td>
   </tr>`).join('');
   const logoSrc=co?.logo||'';
+  const stampSrc=co?.stamp||'';
   return`<h3>${isNew?'新增公司':'編輯公司資料'}</h3>
 <div class="form-grid">
   <div class="field"><label>公司名稱 *</label><input id="cof-name" value="${v('name')}"></div>
@@ -1844,6 +1845,24 @@ function coForm(co,isNew=false){
     <img class="logo-preview-img" id="cof-logo-preview" src="${logoSrc||''}" alt="Logo 預覽" onerror="this.style.display='none';ge('cof-logo-error').style.display='block'">
     <span id="cof-logo-error" style="display:none;font-size:12px;color:var(--red)">⚠️ 圖片載入失敗</span>
     <button class="btn btn-xs btn-danger" onclick="removeLogo('${co.id}')">移除 Logo</button>
+  </div>
+  <div class="section-sep">公司發票章</div>
+  <div class="logo-upload-zone" onclick="ge('cof-stamp-input').click()">
+    <input type="file" id="cof-stamp-input" accept="image/*" onchange="handleStampUpload(this,'${co.id}')">
+    <div style="font-size:13px;color:var(--blue);margin-bottom:4px">點擊上傳發票章圖片</div>
+    <div style="font-size:11px;color:var(--text3)">支援 PNG、JPG、SVG，建議去背 PNG</div>
+  </div>
+  <div style="grid-column:1/-1;margin-top:6px">
+    <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">或貼上圖片網址</label>
+    <div style="display:flex;gap:8px">
+      <input id="cof-stamp-url" placeholder="https://drive.google.com/uc?export=view&id=..." style="flex:1;font-size:12px;padding:6px 8px;border:1px solid #ccc;border-radius:var(--radius);background:var(--bg)" value="${stampSrc&&!stampSrc.startsWith('data:')?stampSrc:''}">
+      <button class="btn btn-sm" onclick="handleStampUrl('${co.id}')">套用</button>
+    </div>
+  </div>
+  <div id="cof-stamp-preview-wrap" class="logo-preview-wrap" style="${stampSrc?'display:flex':'display:none'};grid-column:1/-1">
+    <img class="logo-preview-img" id="cof-stamp-preview" src="${stampSrc||''}" alt="發票章預覽" onerror="this.style.display='none';ge('cof-stamp-error').style.display='block'">
+    <span id="cof-stamp-error" style="display:none;font-size:12px;color:var(--red)">⚠️ 圖片載入失敗</span>
+    <button class="btn btn-xs btn-danger" onclick="removeStamp('${co.id}')">移除發票章</button>
   </div>
   <div class="section-sep">業務人員（可多位）</div>
   <div class="person-section">
@@ -2027,6 +2046,60 @@ async function removeLogo(coId){
   if(wrap)wrap.style.display='none';if(preview)preview.src='';if(urlInput)urlInput.value='';
   renderPreview();
 }
+
+// ===== 發票章上傳（邏輯比照 Logo）=====
+function handleStampUpload(input,coId){
+  const file=input.files[0];if(!file)return;
+  const isSvg=file.type==='image/svg+xml'||file.name.toLowerCase().endsWith('.svg');
+  if(isSvg){
+    const reader=new FileReader();
+    reader.onload=async function(e){
+      const svgText=e.target.result;
+      try{
+        const pngDataUrl=await convertSvgToPng(svgText);
+        await _applyStamp(pngDataUrl,coId);
+        showToast('發票章已上傳（SVG 已自動轉為 PNG）✓');
+      }catch(err){
+        console.error('[handleStampUpload] SVG→PNG 失敗，改存原始 SVG',err);
+        const b64=btoa(unescape(encodeURIComponent(svgText)));
+        await _applyStamp(`data:image/svg+xml;base64,${b64}`,coId);
+        showToast('⚠️ SVG 轉 PNG 失敗，已存原始 SVG（建議改用 PNG 圖檔）');
+      }
+    };
+    reader.readAsText(file,'utf-8');
+  }else{
+    const reader=new FileReader();
+    reader.onload=async function(e){await _applyStamp(e.target.result,coId);};
+    reader.readAsDataURL(file);
+  }
+}
+async function handleStampUrl(coId){
+  const urlInput=ge('cof-stamp-url');if(!urlInput)return;
+  const url=urlInput.value.trim();if(!url){showToast('請貼上圖片網址');return;}
+  showToast('讀取圖片中…');
+  try{
+    const dataUrl=await urlToDataUrl(url);
+    await _applyStamp(dataUrl,coId);
+    showToast('發票章已套用 ✓');
+  }catch(err){
+    console.error('[handleStampUrl]',err);
+    showToast('⚠️ 圖片讀取失敗，請確認網址或改用檔案上傳');
+  }
+}
+async function _applyStamp(dataUrl,coId){
+  const preview=ge('cof-stamp-preview'),wrap=ge('cof-stamp-preview-wrap'),errEl=ge('cof-stamp-error');
+  if(preview){preview.src=dataUrl;preview.style.display='';}if(wrap)wrap.style.display='flex';if(errEl)errEl.style.display='none';
+  const i=companies.findIndex(c=>String(c.id)===String(coId));
+  if(i>=0){companies[i].stamp=dataUrl;lsSet(SK.companies,companies);try{await saveCompanies(companies[i]);}catch(err){showToast('⚠️ 發票章已存本機，雲端同步失敗');}}
+  renderPreview();
+}
+async function removeStamp(coId){
+  const i=companies.findIndex(c=>String(c.id)===String(coId));
+  if(i>=0){companies[i].stamp='';lsSet(SK.companies,companies);try{await saveCompanies(companies[i]);showToast('發票章已移除 ✓');}catch(e){}}
+  const wrap=ge('cof-stamp-preview-wrap'),preview=ge('cof-stamp-preview'),urlInput=ge('cof-stamp-url');
+  if(wrap)wrap.style.display='none';if(preview)preview.src='';if(urlInput)urlInput.value='';
+  renderPreview();
+}
 function addCoContact(){window.coContacts.push({name:'',title:'',phone:''});refreshCoTable();const rows=ge('co-ct-body')?.querySelectorAll('tr');if(rows?.length)rows[rows.length-1].querySelector('input')?.focus();}
 function rmCoContact(i){window.coContacts.splice(i,1);refreshCoTable();}
 function refreshCoTable(){
@@ -2043,8 +2116,8 @@ function saveCoForm(id,isNew='false'){
   const data={name,code:ge('cof-code')?.value.trim(),tax:ge('cof-tax')?.value.trim()||'',brandColor:ge('cof-color')?.value||'#185FA5',invoice:ge('cof-invoice')?.value||'yes',
     zip:ge('cof-zip')?.value.trim(),city:ge('cof-city')?.value.trim()||'',addr:ge('cof-addr')?.value.trim(),tel:ge('cof-tel')?.value.trim(),email:ge('cof-email')?.value.trim(),
     contacts:dedupContacts((window.coContacts||[]).filter(p=>p.name.trim()), ['name','title','phone']),bankName:ge('cof-bank')?.value.trim(),bankAcct:ge('cof-acct')?.value.trim()};
-  if(isNew==='true'||isNew===true){data.id=String(Date.now());data.logo='';companies.push(data);}
-  else{const i=companies.findIndex(c=>String(c.id)===String(id));if(i<0){alert('找不到公司資料');return;}data.id=String(id);data.logo=companies[i].logo||'';companies[i]=data;}
+  if(isNew==='true'||isNew===true){data.id=String(Date.now());data.logo='';data.stamp='';companies.push(data);}
+  else{const i=companies.findIndex(c=>String(c.id)===String(id));if(i<0){alert('找不到公司資料');return;}data.id=String(id);data.logo=companies[i].logo||'';data.stamp=companies[i].stamp||'';companies[i]=data;}
   // 如果報價單編輯頁正在用這家公司，同步更新 selectedCompany 指向新物件
   if(selectedCompany && String(selectedCompany.id)===String(data.id)) selectedCompany=data;
   editingCoId=String(data.id);
@@ -2467,7 +2540,7 @@ function getDefaultFilename(ext){
 }
 
 // ===== BOOT =====
-console.log('%c[報價單系統] BUILD: 2026-05-14-r17 conditional-bank','background:#185FA5;color:#fff;padding:4px 8px;border-radius:3px;font-weight:bold');
+console.log('%c[報價單系統] BUILD: 2026-05-14-r18 stamp-upload','background:#185FA5;color:#fff;padding:4px 8px;border-radius:3px;font-weight:bold');
 initApp();
 
 // 手機版：顯示下載按鈕，隱藏列印按鈕
