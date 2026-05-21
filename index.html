@@ -1968,8 +1968,8 @@ function handleLogoUpload(input,coId){
         showToast('Logo 已上傳（SVG 已自動轉為 PNG）✓');
       }catch(err){
         console.error('[handleLogoUpload] SVG→PNG 轉換失敗，改用原始 SVG 儲存',err);
-        // 保底：失敗時仍存原始 SVG，列印時的 rasterize 可能還救得回來
-        const b64=btoa(unescape(encodeURIComponent(svgText)));
+        // 保底：失敗時存「補好尺寸」的 SVG，避免無 width/height 被裁切
+        const b64=btoa(unescape(encodeURIComponent(addSizeToSvg(svgText))));
         await _applyLogo(`data:image/svg+xml;base64,${b64}`,coId);
         showToast('⚠️ SVG 轉 PNG 失敗，已存原始 SVG（列印可能異常，建議改用 PNG 圖檔）');
       }
@@ -1984,6 +1984,28 @@ function handleLogoUpload(input,coId){
 
 // ===== SVG 轉 PNG（上傳時或重整現有資料時用）=====
 // 解析 SVG → 從 width/height 或 viewBox 算出尺寸 → 放大到 800px 寬高 → 畫到 canvas → 輸出 PNG
+
+// 保底用：把 width/height 補進只有 viewBox 的 SVG，避免當 <img> 顯示時被瀏覽器裁切
+function addSizeToSvg(svgText){
+  try{
+    const doc=new DOMParser().parseFromString(svgText,'image/svg+xml');
+    const svg=doc.documentElement;
+    if(!svg||svg.tagName.toLowerCase()!=='svg') return svgText;
+    let w=parseFloat(svg.getAttribute('width'))||0;
+    let h=parseFloat(svg.getAttribute('height'))||0;
+    if(!w||!h){
+      const vb=svg.getAttribute('viewBox');
+      if(vb){const p=vb.trim().split(/[\s,]+/).map(Number);if(p.length===4){w=w||p[2];h=h||p[3];}}
+    }
+    if(!w||!h){w=400;h=160;}
+    const scale=800/w;
+    svg.setAttribute('width',Math.round(w*scale));
+    svg.setAttribute('height',Math.round(h*scale));
+    if(!svg.getAttribute('xmlns')) svg.setAttribute('xmlns','http://www.w3.org/2000/svg');
+    return new XMLSerializer().serializeToString(svg);
+  }catch(e){ return svgText; }
+}
+
 async function convertSvgToPng(svgText){
   const parser=new DOMParser();
   const doc=parser.parseFromString(svgText,'image/svg+xml');
@@ -2014,23 +2036,28 @@ async function convertSvgToPng(svgText){
   if(!svg.getAttribute('xmlns')) svg.setAttribute('xmlns','http://www.w3.org/2000/svg');
 
   const serialized=new XMLSerializer().serializeToString(svg);
-  const svgDataUrl='data:image/svg+xml;base64,'+btoa(unescape(encodeURIComponent(serialized)));
+  // 用 Blob URL 載入（不受 base64 長度限制，大型/複雜 SVG 更穩健）
+  const blob=new Blob([serialized],{type:'image/svg+xml;charset=utf-8'});
+  const blobUrl=URL.createObjectURL(blob);
 
-  // 載入 SVG → 畫到 canvas → 輸出 PNG
-  const tmp=await new Promise((res,rej)=>{
-    const t=new Image();
-    t.onload=()=>res(t);
-    t.onerror=()=>rej(new Error('SVG image load failed'));
-    t.src=svgDataUrl;
-  });
-  const canvas=document.createElement('canvas');
-  canvas.width=finalW; canvas.height=finalH;
-  // 透明背景 → fill 白色（避免 PNG 透明部分在某些環境下變成黑色）
-  const ctx=canvas.getContext('2d');
-  ctx.drawImage(tmp,0,0,finalW,finalH);
-  const png=canvas.toDataURL('image/png');
-  if(!png||png==='data:,') throw new Error('canvas 輸出空 PNG');
-  return png;
+  try{
+    // 載入 SVG → 畫到 canvas → 輸出 PNG
+    const tmp=await new Promise((res,rej)=>{
+      const t=new Image();
+      t.onload=()=>res(t);
+      t.onerror=()=>rej(new Error('SVG image load failed'));
+      t.src=blobUrl;
+    });
+    const canvas=document.createElement('canvas');
+    canvas.width=finalW; canvas.height=finalH;
+    const ctx=canvas.getContext('2d');
+    ctx.drawImage(tmp,0,0,finalW,finalH);
+    const png=canvas.toDataURL('image/png');
+    if(!png||png==='data:,') throw new Error('canvas 輸出空 PNG');
+    return png;
+  } finally {
+    URL.revokeObjectURL(blobUrl);
+  }
 }
 async function _applyLogo(dataUrl,coId){
   const preview=ge('cof-logo-preview'),wrap=ge('cof-logo-preview-wrap'),errEl=ge('cof-logo-error');
@@ -2061,7 +2088,7 @@ function handleStampUpload(input,coId){
         showToast('發票章已上傳（SVG 已自動轉為 PNG）✓');
       }catch(err){
         console.error('[handleStampUpload] SVG→PNG 失敗，改存原始 SVG',err);
-        const b64=btoa(unescape(encodeURIComponent(svgText)));
+        const b64=btoa(unescape(encodeURIComponent(addSizeToSvg(svgText))));
         await _applyStamp(`data:image/svg+xml;base64,${b64}`,coId);
         showToast('⚠️ SVG 轉 PNG 失敗，已存原始 SVG（建議改用 PNG 圖檔）');
       }
@@ -2540,7 +2567,7 @@ function getDefaultFilename(ext){
 }
 
 // ===== BOOT =====
-console.log('%c[報價單系統] BUILD: 2026-05-14-r18 stamp-upload','background:#185FA5;color:#fff;padding:4px 8px;border-radius:3px;font-weight:bold');
+console.log('%c[報價單系統] BUILD: 2026-05-21-r19 svg-blob-fix','background:#185FA5;color:#fff;padding:4px 8px;border-radius:3px;font-weight:bold');
 initApp();
 
 // 手機版：顯示下載按鈕，隱藏列印按鈕
