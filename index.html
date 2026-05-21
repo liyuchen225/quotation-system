@@ -1514,22 +1514,35 @@ function renderPreviewTo(ids, co, cl, salesIdx, contactIdx, qtItems, disc, taxRa
 
   // 簽名欄
   const sigEl = ge(ids.signers);
+  let signerCount = 1; // 核准固定一欄
   if(sigEl){
     const signers=[];
     if(sp)signers.push(sp.name+(sp.title?'<br><span style="font-size:10px">'+sp.title+'</span>':''));
     if(cp)signers.push(cp.name+(cp.title?'<br><span style="font-size:10px">'+cp.title+'</span>':''));
     signers.push('核　准');
     sigEl.innerHTML=signers.map(s=>`<div class="qp-sign-box">${s}</div>`).join('');
+    signerCount = signers.length;
   }
 
-  // 發票章：放在業務員簽核欄上方、橫線之上、置中
+  // 發票章：放在第一欄（業務員）上方置中。章列欄數跟簽核欄一致，沒選承辦人時也能對齊業務欄
   const stampRow = ids.stampRow ? ge(ids.stampRow) : null;
   const stampImg = ids.stampImg ? ge(ids.stampImg) : null;
   if(stampRow && stampImg){
     if(co && co.stamp){
       stampImg.src = co.stamp;
+      // 重建章列：第 1 欄放章（保留 img 元素），其餘 signerCount-1 欄留空，與簽核欄對齊
+      stampRow.innerHTML='';
+      const cell0=document.createElement('div');
+      cell0.className='qp-stamp-cell';
+      cell0.appendChild(stampImg);
+      stampRow.appendChild(cell0);
+      for(let k=1;k<signerCount;k++){
+        const blank=document.createElement('div');
+        blank.style.flex='1';
+        stampRow.appendChild(blank);
+      }
       stampRow.style.display = 'flex';
-      if(sigEl) sigEl.style.marginTop = '0.4em'; // 章列已提供上間距，縮小 signer 間距讓章貼近橫線
+      if(sigEl) sigEl.style.marginTop = '0.9em'; // 章與橫線間距（小幅拉開）
     }else{
       stampRow.style.display = 'none';
       stampImg.removeAttribute('src');
@@ -2622,7 +2635,7 @@ function getDefaultFilename(ext){
 }
 
 // ===== BOOT =====
-console.log('%c[報價單系統] BUILD: 2026-05-21-r21 stamp-split-4cm','background:#185FA5;color:#fff;padding:4px 8px;border-radius:3px;font-weight:bold');
+console.log('%c[報價單系統] BUILD: 2026-05-21-r22 stamp-align-gap','background:#185FA5;color:#fff;padding:4px 8px;border-radius:3px;font-weight:bold');
 initApp();
 
 // 手機版：顯示下載按鈕，隱藏列印按鈕
