@@ -62,6 +62,8 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#f5f5f5;min-heigh
 .cpill{display:inline-flex;align-items:center;background:var(--blue-lt);color:var(--blue);font-size:12px;padding:3px 10px;border-radius:12px;cursor:pointer;border:1.5px solid transparent;transition:all .12s}
 .cpill:hover{border-color:#a0c0e0}
 .cpill.active{background:var(--blue);color:#fff;border-color:var(--blue)}
+.cpill.deleted{background:#f0f0f0;color:#999;text-decoration:line-through;border-color:#ddd}
+.cpill.deleted.active{background:#999;color:#fff;border-color:#999;text-decoration:line-through}
 
 /* QUOTE */
 .quote-layout{display:grid;grid-template-columns:300px 1fr;min-height:620px;border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden}
@@ -592,6 +594,7 @@ table.qi td.r{text-align:right}
             <button class="btn btn-sm btn-primary" id="qt-btn-edit" onclick="editSelectedQuote()">✏️ 開啟修改</button>
             <button class="btn btn-sm" onclick="copySelectedQuote()">📋 複製</button>
             <button class="btn btn-sm" id="qt-btn-print" onclick="printQuote()" style="display:none">🖨️ 列印 / PDF</button>
+            <button class="btn btn-sm" id="qt-btn-download" onclick="downloadImage()" style="display:none">📥 下載圖片</button>
             <button class="btn btn-sm btn-primary" id="qt-btn-save-backend" onclick="saveBackendInfoFromList()" style="display:none">💾 儲存後台資訊</button>
             <button class="btn btn-sm btn-danger" id="qt-btn-delete" onclick="deleteSelectedQuote()">🗑 刪除</button>
           </div>
@@ -747,8 +750,11 @@ function apiGet(params){
   return fetch(url,{method:'GET'}).then(r=>r.json()).catch(()=>apiJsonp(params));
 }
 function apiPost(body){
+  // ⚠️ 不要做 apiJsonp fallback：fetch 失敗時 GAS 通常已經處理寫入了，
+  // 重新用 JSONP 發一次會造成「同一張單寫兩筆」的重複資料 bug。
+  // 呼叫端（saveQuote/saveCompany/saveClient）內部的 try/catch 會接住錯誤、給「已存本機」訊息。
   return fetch(API_URL,{method:'POST',body:JSON.stringify(body),headers:{'Content-Type':'text/plain'}})
-    .then(r=>r.json()).catch(()=>apiJsonp(body));
+    .then(r=>r.json());
 }
 
 // ===== TOAST =====
@@ -769,12 +775,21 @@ function markUnsaved(){
 function dedupContacts(arr, keyFields){
   if(!arr || !arr.length) return [];
   const fields = keyFields || ['name','dept','ext'];
-  const map = new Map();
+  const result = [];
+  const seen = new Map();
   arr.forEach(p => {
+    if(p.deleted){
+      // 已軟刪除的承辦人一律保留（給既有報價單查找用），不參與去重
+      result.push(p);
+      return;
+    }
     const key = fields.map(f => String(p[f]||'').trim()).join('|');
-    if(!map.has(key)) map.set(key, p);
+    if(!seen.has(key)){
+      seen.set(key, true);
+      result.push(p);
+    }
   });
-  return Array.from(map.values());
+  return result;
 }
 
 // ===== 一次性清理重複資料 =====
@@ -1068,7 +1083,19 @@ async function initApp(){
     if(q.notes)ge('q-notes').value=q.notes;
     if(q.status)ge('q-status').value=q.status;
     if(q.companyId){const co=companies.find(c=>String(c.id)===String(q.companyId));if(co){selectedCompany=co;selectedSalesIdx=(q.salesIdx!=null&&q.salesIdx!=='')?Number(q.salesIdx):null;}}
-    if(q.clientId){const cl=clients.find(c=>String(c.id)===String(q.clientId));if(cl){selectedClient=cl;selectedContactIdx=(q.contactIdx!=null&&q.contactIdx!=='')?Number(q.contactIdx):null;}}
+    if(q.clientId){
+      const cl=clients.find(c=>String(c.id)===String(q.clientId));
+      if(cl){
+        selectedClient=cl;
+        // 優先用 contactId 找承辦人（含已刪除的）；找不到再 fallback 用 contactIdx
+        if(q.contactId){
+          const idx=cl.contacts.findIndex(c=>String(c.id)===String(q.contactId));
+          selectedContactIdx=idx>=0?idx:((q.contactIdx!=null&&q.contactIdx!=='')?Number(q.contactIdx):null);
+        }else{
+          selectedContactIdx=(q.contactIdx!=null&&q.contactIdx!=='')?Number(q.contactIdx):null;
+        }
+      }
+    }
   }else{ge('q-date').value=new Date().toISOString().split('T')[0];}
 
   renderCoSelect();
@@ -1166,6 +1193,7 @@ async function saveQuote(manual){
     salesIdx:selectedSalesIdx!=null?Number(selectedSalesIdx):null,
     clientId:selectedClient?.id||null,
     contactIdx:selectedContactIdx!=null?Number(selectedContactIdx):null,
+    contactId:(selectedContactIdx!=null && selectedClient?.contacts?.[selectedContactIdx])?String(selectedClient.contacts[selectedContactIdx].id||''):'',
     items,savedAt:new Date().toISOString()
   };
   let savedQuotes=lsGet(SK.quotes)||[];
@@ -1308,8 +1336,21 @@ function renderClientCard(){
   ge('q-cl-name-badge').innerHTML = escHtml(cl.name||'') + taxBadge;
   ge('q-cl-base').innerHTML=`統編：${cl.tax}${cl.tel?' ／ '+cl.tel:''}<br>${fmtAddr(cl.zip, cl.city, cl.addr)}`;
   const pills=ge('q-contact-pills');
-  pills.innerHTML=(cl.contacts||[]).length
-    ?cl.contacts.map((p,i)=>`<span class="cpill${selectedContactIdx===i?' active':''}" onclick="toggleContact(${i})" title="${p.dept||''}${p.title?' '+p.title:''}${p.ext?' 分機：'+p.ext:''}">${p.name}${p.dept?' · '+p.dept:''}</span>`).join('')
+  // 顯示「未刪除的承辦人 + 該單目前指向的（即使已刪除，灰色標示）」
+  const visibleContactIdx=[];
+  (cl.contacts||[]).forEach((p,i)=>{
+    if(!p.deleted) visibleContactIdx.push(i);
+    else if(i===selectedContactIdx) visibleContactIdx.push(i);
+  });
+  pills.innerHTML=visibleContactIdx.length
+    ?visibleContactIdx.map(i=>{
+        const p=cl.contacts[i];
+        const isDel=!!p.deleted;
+        const cls=`cpill${selectedContactIdx===i?' active':''}${isDel?' deleted':''}`;
+        const label=isDel?`${p.name}（已刪除）`:`${p.name}${p.dept?' · '+p.dept:''}`;
+        const titleStr=`${p.dept||''}${p.title?' '+p.title:''}${p.ext?' 分機：'+p.ext:''}${isDel?' [已刪除]':''}`;
+        return `<span class="${cls}" onclick="toggleContact(${i})" title="${titleStr}">${label}</span>`;
+      }).join('')
     :'<span style="font-size:12px;color:var(--text3)">（無承辦人資料）</span>';
   ge('q-cl-info').style.display='block';
 }
@@ -1627,17 +1668,13 @@ function officeSelectOptions(selectedIdx){
 function clientForm(cl){
   const v=(x)=>cl?escHtml(cl[x]||''):'';
   window.clOffices=(cl?.offices||[]).map(o=>({...o}));
-  // 載入時先去重，避免雲端/本機資料已有重複
-  const rawCl=(cl?.contacts||[]).map(p=>({...p,officeIdx:p.officeIdx??null}));
-  const clContactMap=new Map();
-  rawCl.forEach(p=>{
-    const key=(p.name||'').trim()+'|'+(p.dept||'').trim()+'|'+(p.ext||'').trim();
-    if(!clContactMap.has(key)) clContactMap.set(key,p);
-  });
-  window.clContacts=Array.from(clContactMap.values());
+  // 保留完整承辦人清單（含已軟刪除的），給歷史報價單查找用
+  // dedupContacts 會自動跳過 deleted=true 的人（不去重、原樣保留）
+  window.clContacts=dedupContacts((cl?.contacts||[]).map(p=>({...p,officeIdx:p.officeIdx??null,deleted:p.deleted===true})));
   const rows=()=>{
     const hasOffices=(window.clOffices||[]).length>0;
-    return window.clContacts.map((p,i)=>`<tr>
+    // UI 上只顯示未刪除的承辦人，但 onclick/oninput 仍用 window.clContacts 的原始 index
+    return window.clContacts.map((p,i)=>({p,i})).filter(x=>!x.p.deleted).map(({p,i})=>`<tr>
     <td><input value="${escHtml(p.name||'')}" oninput="clContacts[${i}].name=this.value" placeholder="姓名"></td>
     ${hasOffices?`<td><select onchange="clContacts[${i}].officeIdx=this.value===''?null:+this.value">${officeSelectOptions(p.officeIdx)}</select></td>`:''}
     <td><input value="${escHtml(p.dept||'')}" oninput="clContacts[${i}].dept=this.value" placeholder="單位/部門"></td>
@@ -1692,8 +1729,16 @@ function clientForm(cl){
   </div>
 </div>`;
 }
-function addClContact(){window.clContacts.push({name:'',officeIdx:null,dept:'',title:'',ext:'',mobile:'',email:'',note:''});refreshClTable();}
-function rmClContact(i){window.clContacts.splice(i,1);refreshClTable();}
+function addClContact(){window.clContacts.push({name:'',officeIdx:null,dept:'',title:'',ext:'',mobile:'',email:'',note:'',deleted:false});refreshClTable();}
+function rmClContact(i){
+  const p=window.clContacts[i];
+  if(!p) return;
+  // 新承辦人（還沒儲存到雲端、name 都還沒填）直接從畫面拿掉，不跳確認
+  if(!p.id && !p.name?.trim()){ window.clContacts.splice(i,1); refreshClTable(); return; }
+  if(!confirm(`⚠️ 確定刪除 [${p.name||'(未命名)'}]？\n此操作後該承辦人將從新報價單選單中消失，但既有報價單仍會顯示。`)) return;
+  p.deleted=true;
+  refreshClTable();
+}
 function refreshClTable(){
   const b=ge('cl-ct-body');if(!b)return;
   const hasOffices=(window.clOffices||[]).length>0;
@@ -1707,7 +1752,8 @@ function refreshClTable(){
       <th style="width:28px"></th>
     </tr>`;
   }
-  b.innerHTML=window.clContacts.map((p,i)=>`<tr>
+  // UI 上只顯示未刪除的承辦人，但 onclick/oninput 仍用 window.clContacts 的原始 index
+  b.innerHTML=window.clContacts.map((p,i)=>({p,i})).filter(x=>!x.p.deleted).map(({p,i})=>`<tr>
     <td><input value="${escHtml(p.name||'')}" oninput="clContacts[${i}].name=this.value" placeholder="姓名"></td>
     ${hasOffices?`<td><select onchange="clContacts[${i}].officeIdx=this.value===''?null:+this.value">${officeSelectOptions(p.officeIdx)}</select></td>`:''}
     <td><input value="${escHtml(p.dept||'')}" oninput="clContacts[${i}].dept=this.value" placeholder="單位/部門"></td>
@@ -1756,14 +1802,9 @@ function saveClientForm(id){
   }
 
   const code=ge('cf-code')?.value.trim()||'';
-  // contacts 去重：以 name+dept+ext 為複合 key
-  const rawContacts=(window.clContacts||[]).filter(p=>p.name.trim());
-  const contactMap=new Map();
-  rawContacts.forEach(p=>{
-    const key=(p.name||'').trim()+'|'+(p.dept||'').trim()+'|'+(p.ext||'').trim();
-    if(!contactMap.has(key)) contactMap.set(key,p);
-  });
-  const contacts=Array.from(contactMap.values());
+  // contacts：軟刪除的人保留（即使 name 空也保留以維持 id），未刪除的 filter+dedup
+  const rawContacts=(window.clContacts||[]).filter(p=>p.deleted || (p.name||'').trim());
+  const contacts=dedupContacts(rawContacts); // dedupContacts 會自動跳過 deleted，未刪除的用 name|dept|ext 去重
   const offices=(window.clOffices||[]).filter(o=>o.name.trim());
   const data={name,tax,code,tel:ge('cf-tel')?.value.trim()||'',fax:ge('cf-fax')?.value.trim()||'',taxType:ge('cf-taxtype')?.value||'extra',
     zip:ge('cf-zip')?.value.trim()||'',city:ge('cf-city')?.value.trim()||'',addr:ge('cf-addr')?.value.trim()||'',offices,contacts};
@@ -2284,7 +2325,13 @@ function importData(input){
       if(q.tax!=null)ge('q-tax').value=q.tax;if(q.disc!=null)ge('q-disc').value=q.disc;if(q.notes)ge('q-notes').value=q.notes;
       if(q.status)ge('q-status').value=q.status;
       selectedCompany=q.companyId?companies.find(c=>c.id==q.companyId)||null:null;selectedSalesIdx=q.salesIdx??null;
-      selectedClient=q.clientId?clients.find(c=>c.id==q.clientId)||null:null;selectedContactIdx=q.contactIdx??null;
+      selectedClient=q.clientId?clients.find(c=>c.id==q.clientId)||null:null;
+      if(q.contactId && selectedClient){
+        const idx=selectedClient.contacts.findIndex(c=>String(c.id)===String(q.contactId));
+        selectedContactIdx=idx>=0?idx:(q.contactIdx??null);
+      }else{
+        selectedContactIdx=q.contactIdx??null;
+      }
       ge('q-cl-search').value=selectedClient?.name||'';
       if(selectedClient)renderClientCard();else ge('q-cl-info').style.display='none';
       renderCoSelect();if(selectedCompany){ge('q-co-sel').value=selectedCompany.id;renderSalesPills();}else{ge('q-co-sel').value='';ge('q-sales-wrap').style.display='none';}
@@ -2409,11 +2456,14 @@ function previewQuote(id){
   const isClosed = qt.status==='closed';
   if(numLabel)numLabel.textContent=(qt.num||qt.id)+(qt.status?'　'+{draft:'草稿',sent:'已發送',accepted:'已接受',cancelled:'已取消',closed:'結案'}[qt.status]||'':'');
 
-  // 結案的單：隱藏「開啟修改」、顯示「列印 / PDF」「儲存後台資訊」；「刪除」一律顯示
-  const btnEdit=ge('qt-btn-edit'), btnDelete=ge('qt-btn-delete'), btnPrint=ge('qt-btn-print'), btnSaveBackend=ge('qt-btn-save-backend');
+  // 結案的單：隱藏「開啟修改」、顯示「列印 / PDF」或「下載圖片」「儲存後台資訊」；「刪除」一律顯示
+  const btnEdit=ge('qt-btn-edit'), btnDelete=ge('qt-btn-delete'), btnPrint=ge('qt-btn-print'), btnDownload=ge('qt-btn-download'), btnSaveBackend=ge('qt-btn-save-backend');
+  const isMobile = window.innerWidth <= 768;
   if(btnEdit) btnEdit.style.display = isClosed ? 'none' : '';
   if(btnDelete) btnDelete.style.display = '';
-  if(btnPrint) btnPrint.style.display = isClosed ? '' : 'none';
+  // 結案才出現輸出按鈕；桌機顯示列印，手機顯示下載
+  if(btnPrint) btnPrint.style.display = (isClosed && !isMobile) ? '' : 'none';
+  if(btnDownload) btnDownload.style.display = (isClosed && isMobile) ? '' : 'none';
   if(btnSaveBackend) btnSaveBackend.style.display = isClosed ? '' : 'none';
 
   // 結案後台編輯區：填入 4 欄目前值
@@ -2495,7 +2545,8 @@ function copySelectedQuote(){
   const todayNums=savedQuotes.map(q=>q.num||q.id||'').filter(n=>n.startsWith(prefix)).map(n=>parseInt(n.replace(prefix,''),10)).filter(n=>!isNaN(n));
   const maxSeq=todayNums.length?Math.max(...todayNums):0;
   const newNum=prefix+String(maxSeq+1).padStart(3,'0');
-  const newQt={...JSON.parse(JSON.stringify(qt)),id:newNum,num:newNum,status:'draft',savedAt:now.toISOString()};
+  // 複製不帶後台資訊（發票相關欄位歸零，狀態回草稿）；承辦人也清空（依設計：複製做新單時承辦人空白）
+  const newQt={...JSON.parse(JSON.stringify(qt)),id:newNum,num:newNum,status:'draft',savedAt:now.toISOString(),closedNotes:'',invoiceDate:'',invoiceNumber:'',noInvoice:false,contactIdx:null,contactId:''};
   let sq=lsGet(SK.quotes)||[];
   sq.unshift(newQt);lsSet(SK.quotes,sq);
   showToast('已複製為 '+newNum+' ✓');
@@ -2560,12 +2611,18 @@ function openQuote(id){
   selectedSalesIdx = (qt.salesIdx!=null && qt.salesIdx!=='')
     ? Number(qt.salesIdx) : null;
 
-  // --- 設定客戶與承辦人（contactIdx 強制轉數字）---
+  // --- 設定客戶與承辦人（優先用 contactId，找不到再 fallback 用 contactIdx）---
   selectedClient = qt.clientId
     ? clients.find(c=>String(c.id)===String(qt.clientId)) || null
     : null;
-  selectedContactIdx = (qt.contactIdx!=null && qt.contactIdx!=='')
-    ? Number(qt.contactIdx) : null;
+  if(qt.contactId && selectedClient){
+    const idx = selectedClient.contacts.findIndex(c=>String(c.id)===String(qt.contactId));
+    selectedContactIdx = idx>=0 ? idx
+      : ((qt.contactIdx!=null && qt.contactIdx!=='') ? Number(qt.contactIdx) : null);
+  } else {
+    selectedContactIdx = (qt.contactIdx!=null && qt.contactIdx!=='')
+      ? Number(qt.contactIdx) : null;
+  }
 
   // --- 渲染 UI ---
   renderCoSelect();
@@ -2626,16 +2683,30 @@ function newQuote(){
 
 // ===== 產生預設檔名 =====
 function getDefaultFilename(ext){
-  const num = document.getElementById('q-num')?.value?.trim() || '';
-  const clCode = (selectedClient?.code||'').trim();
-  const firstItem = (items && items.length > 0) ? (items[0].desc||'').trim() : '';
+  let num='', clCode='', firstItem='';
+  const activePanel = document.querySelector('.panel.active');
+  if(activePanel && activePanel.id === 'tab-quotes' && selectedQuoteId){
+    // 在報價單管理頁：用目前選中的那張單的資料（不是編輯頁的表單值）
+    const qt = (lsGet(SK.quotes)||[]).find(q=>(q.id||q.num)===selectedQuoteId);
+    if(qt){
+      num = (qt.num||qt.id||'').trim();
+      const cl = clients.find(c=>String(c.id)===String(qt.clientId));
+      clCode = (cl?.code||'').trim();
+      firstItem = (Array.isArray(qt.items) && qt.items.length>0) ? (qt.items[0].desc||'').trim() : '';
+    }
+  } else {
+    // 編輯頁：照舊讀表單值
+    num = document.getElementById('q-num')?.value?.trim() || '';
+    clCode = (selectedClient?.code||'').trim();
+    firstItem = (items && items.length > 0) ? (items[0].desc||'').trim() : '';
+  }
   const parts = [num, clCode, firstItem ? firstItem+'等一批' : ''].filter(Boolean);
   const base = parts.join('_').replace(/[/\\:*?"<>|]/g, '');
   return (base || '報價單') + '.' + ext;
 }
 
 // ===== BOOT =====
-console.log('%c[報價單系統] BUILD: 2026-05-21-r22 stamp-align-gap','background:#185FA5;color:#fff;padding:4px 8px;border-radius:3px;font-weight:bold');
+console.log('%c[報價單系統] BUILD: 2026-06-29-r26 dedup-write-fix','background:#185FA5;color:#fff;padding:4px 8px;border-radius:3px;font-weight:bold');
 initApp();
 
 // 手機版：顯示下載按鈕，隱藏列印按鈕
@@ -2689,8 +2760,15 @@ async function rasterizeAllImages(paper){
 
 // ===== 下載圖片（手機版）=====
 async function downloadImage(){
-  const paper = document.querySelector('#tab-quote .quote-paper');
-  if(!paper){ showToast('請先開啟報價單'); return; }
+  // 看目前在哪個分頁就抓那張紙（跟 printQuote 同邏輯）
+  const activePanel = document.querySelector('.panel.active');
+  let paper = null;
+  if(activePanel && activePanel.id === 'tab-quotes'){
+    paper = document.querySelector('#tab-quotes .quote-paper');
+  } else {
+    paper = document.querySelector('#tab-quote .quote-paper');
+  }
+  if(!paper || paper.style.display === 'none'){ showToast('請先開啟報價單'); return; }
   if(typeof html2canvas==='undefined'){ showToast('截圖模組載入中，請稍候'); return; }
 
   showToast('準備下載中…', 10000);
