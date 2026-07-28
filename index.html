@@ -572,7 +572,7 @@ table.qi td.r{text-align:right}
           <button class="btn btn-sm btn-primary" onclick="newQuote()">＋ 新增</button>
         </div>
         <div style="padding:8px 10px;border-bottom:0.5px solid var(--border)">
-          <input id="q-search" placeholder="搜尋單號或客戶…" style="width:100%;font-size:12px;padding:5px 8px;border:1px solid #ccc;border-radius:var(--radius);background:var(--bg)" oninput="renderQuoteList(this.value)">
+          <input id="q-search" placeholder="搜尋單號、客戶或發票號碼…" style="width:100%;font-size:12px;padding:5px 8px;border:1px solid #ccc;border-radius:var(--radius);background:var(--bg)" oninput="renderQuoteList(this.value)">
         </div>
         <div style="padding:6px 10px;border-bottom:0.5px solid var(--border);display:flex;gap:6px;flex-wrap:wrap;align-items:center">
           <select id="qf-active-sel" onchange="filterQuotes(this.value)" style="font-size:12px;padding:4px 8px;border:1px solid var(--blue);border-radius:var(--radius);background:var(--blue);color:#fff;font-weight:500">
@@ -2404,7 +2404,11 @@ function renderQuoteList(search=''){
   raw.forEach(q=>{const k=q.num||q.id;if(!k)return;const ex=seenNums.get(k);if(!ex||new Date(q.savedAt||0)>new Date(ex.savedAt||0))seenNums.set(k,q);});
   let savedQuotes=Array.from(seenNums.values()).sort((a,b)=>new Date(b.savedAt||b.date||0)-new Date(a.savedAt||a.date||0));
   const q=(search||'').toLowerCase();
-  if(q)savedQuotes=savedQuotes.filter(qt=>(qt.num||'').toLowerCase().includes(q)||getClientName(qt.clientId).toLowerCase().includes(q));
+  if(q)savedQuotes=savedQuotes.filter(qt=>
+    (qt.num||'').toLowerCase().includes(q)
+    ||getClientName(qt.clientId).toLowerCase().includes(q)
+    ||(qt.invoiceNumber||'').toLowerCase().includes(q)
+  );
   // 篩選邏輯：'all' = 草稿/已發送/已接受（排除結案、已取消）；其他狀態按字面比對
   if(quoteFilter==='all'){
     savedQuotes=savedQuotes.filter(qt=>['draft','sent','accepted'].includes(qt.status||'draft'));
@@ -2706,7 +2710,7 @@ function getDefaultFilename(ext){
 }
 
 // ===== BOOT =====
-console.log('%c[報價單系統] BUILD: 2026-06-29-r26 dedup-write-fix','background:#185FA5;color:#fff;padding:4px 8px;border-radius:3px;font-weight:bold');
+console.log('%c[報價單系統] BUILD: 2026-07-27-r27 search-by-invoice','background:#185FA5;color:#fff;padding:4px 8px;border-radius:3px;font-weight:bold');
 initApp();
 
 // 手機版：顯示下載按鈕，隱藏列印按鈕
